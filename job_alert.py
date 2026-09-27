@@ -18,7 +18,7 @@ def fetch_remoteok_jobs():
     for job in jobs:
         title = job.get("position", "").lower()
         if any(k in title for k in KEYWORDS):
-            matches.append(f"<b>{job.get('position')}</b>\n{job.get('company')}\nhttps://remoteok.com{job.get('url')}")
+            matches.append(f"<b>{job.get('position')}</b>\n{job.get('company')}\n{job.get('url')}")
     return matches
 
 def main():
