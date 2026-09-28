@@ -1,9 +1,6 @@
 name: Job Alert Bot
 
 on:
-  schedule:
-    - cron: '30 3 * * *'
-    - cron: '30 11 * * *'
   workflow_dispatch:
 
 jobs:
