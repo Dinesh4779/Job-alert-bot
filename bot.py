@@ -53,9 +53,9 @@ def fetch_jobs(keywords):
 
 HELP = ("Commands:\n"
         "/jobs - get matching jobs now\n"
-        "/keywords data analyst, sql - set the job titles you want\n"
-        "/keywords - see your current keywords\n"
-        "/keywords clear - go back to defaults\n"
+        "/keywords - view or set your job titles\n"
+        "  e.g. /keywords data analyst, sql\n"
+        "  /keywords clear - reset to defaults\n"
         "/stop - pause alerts\n"
         "/start - resume alerts")
 
