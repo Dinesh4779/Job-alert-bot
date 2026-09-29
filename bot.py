@@ -6,6 +6,8 @@ from flask import Flask, request
 BOT_TOKEN = os.environ["BOT_TOKEN"]
 SUPABASE_URL = os.environ["SUPABASE_URL"].rstrip("/")
 SUPABASE_KEY = os.environ["SUPABASE_KEY"]
+ADZUNA_APP_ID = os.environ.get("ADZUNA_APP_ID")
+ADZUNA_APP_KEY = os.environ.get("ADZUNA_APP_KEY")
 WEBHOOK_SECRET = os.environ["WEBHOOK_SECRET"]
 PUBLIC_URL = os.environ.get("RENDER_EXTERNAL_URL", "")
 
@@ -39,15 +41,38 @@ def db_get(chat_id):
 
 
 def fetch_jobs(keywords):
+    found = []
     r = requests.get("https://remoteok.com/api",
                      headers={"User-Agent": "Mozilla/5.0"}, timeout=20)
-    found = []
     for j in r.json()[1:]:
         title = (j.get("position") or "").lower()
         if any(k in title for k in keywords):
             found.append(
                 f"<b>{html.escape(j.get('position', ''))}</b>\n"
                 f"{html.escape(j.get('company', ''))}\n{j.get('url', '')}")
+        if len(found) >= 5:
+            break
+
+    if ADZUNA_APP_ID and ADZUNA_APP_KEY:
+        for kw in keywords[:3]:
+            try:
+                r = requests.get(
+                    "https://api.adzuna.com/v1/api/jobs/in/search/1",
+                    params={"app_id": ADZUNA_APP_ID, "app_key": ADZUNA_APP_KEY,
+                            "results_per_page": 10, "what": kw,
+                            "where": "bangalore", "content-type": "application/json"},
+                    timeout=20)
+                r.raise_for_status()
+            except requests.RequestException:
+                continue
+            for j in r.json().get("results", []):
+                title = j.get("title") or ""
+                company = (j.get("company") or {}).get("display_name") or ""
+                found.append(
+                    f"<b>{html.escape(title)}</b>\n"
+                    f"{html.escape(company)}\n{j.get('redirect_url', '')}")
+            if len(found) >= 10:
+                break
     return found
 
 
