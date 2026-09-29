@@ -60,17 +60,27 @@ def fetch_remoteok():
     r = requests.get("https://remoteok.com/api",
                      headers={"User-Agent": "Mozilla/5.0"}, timeout=30)
     r.raise_for_status()
+    cutoff = datetime.now(timezone.utc) - timedelta(days=21)
     jobs = []
     for j in r.json()[1:]:
         jid = str(j.get("id") or "")
         if not jid.isalnum():
             continue
+        posted = j.get("date") or ""
+        try:
+            posted_dt = datetime.fromisoformat(posted.replace("Z", "+00:00"))
+        except ValueError:
+            continue
+        if posted_dt < cutoff:
+            continue
         title = j.get("position") or ""
         jobs.append({
             "id": f"ro_{jid}",
             "title": title.lower(),
+            "posted": posted_dt,
             "text": f"<b>{html.escape(title)}</b>\n"
                     f"{html.escape(j.get('company') or '')}\n{j.get('url', '')}"})
+    jobs.sort(key=lambda j: j["posted"], reverse=True)
     return jobs
 
 
