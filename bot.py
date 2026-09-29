@@ -112,6 +112,13 @@ def handle(chat_id, text):
             kws = [k.strip().lower()[:40] for k in arg.split(",") if k.strip()][:10]
             db_upsert(chat_id, keywords=kws)
             send(chat_id, "Saved: " + html.escape(", ".join(kws)))
+    elif cmd == "/suggest":
+        if not arg:
+            send(chat_id, "Add your suggestion after the command, e.g.\n/suggest add LinkedIn jobs")
+        else:
+            if OWNER_CHAT_ID:
+                send(OWNER_CHAT_ID, f"Suggestion from {chat_id}:\n{arg[:500]}")
+            send(chat_id, "Thanks! Your suggestion was sent.")
     elif cmd == "/jobs":
         user = db_get(chat_id)
         kws = (user or {}).get("keywords") or DEFAULT_KEYWORDS
