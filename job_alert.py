@@ -1,8 +1,9 @@
 import os
 import time
 import html
-from datetime import datetime, timedelta, timezone
+import re
 import requests
+from datetime import datetime, timedelta, timezone
 
 BOT_TOKEN = os.environ["BOT_TOKEN"]
 SUPABASE_URL = os.environ["SUPABASE_URL"].rstrip("/")
@@ -55,6 +56,31 @@ def prune():
     requests.delete(SENT, headers=H, timeout=20,
                     params={"sent_at": f"lt.{cutoff}"})
 
+EXP_RANGE = re.compile(r'(\d{1,2})\s*(?:-|to)\s*(\d{1,2})\s*\+?\s*(?:yrs?|years?)', re.I)
+EXP_PLUS = re.compile(r'(\d{1,2})\s*\+\s*(?:yrs?|years?)', re.I)
+EXP_MIN = re.compile(r'(?:minimum|min\.?|at least)\s*(\d{1,2})\s*(?:yrs?|years?)', re.I)
+EXP_SINGLE = re.compile(r'(\d{1,2})\s*(?:yrs?|years?)', re.I)
+BUCKET_ORDER = ["0-2 yrs experience", "2-4 yrs experience",
+                "4-6 yrs experience", "6+ yrs experience",
+                "Experience not specified"]
+
+
+def experience_bucket(text):
+    if not text:
+        return BUCKET_ORDER[-1]
+    m = EXP_RANGE.search(text) or EXP_PLUS.search(text) or \
+        EXP_MIN.search(text) or EXP_SINGLE.search(text)
+    if not m:
+        return BUCKET_ORDER[-1]
+    lo = int(m.group(1))
+    if lo <= 2:
+        return BUCKET_ORDER[0]
+    if lo <= 4:
+        return BUCKET_ORDER[1]
+    if lo <= 6:
+        return BUCKET_ORDER[2]
+    return BUCKET_ORDER[3]
+
 
 def fetch_remoteok():
     r = requests.get("https://remoteok.com/api",
@@ -73,13 +99,13 @@ def fetch_remoteok():
             continue
         if posted_dt < cutoff:
             continue
-        title = j.get("position") or ""
-        jobs.append({
-            "id": f"ro_{jid}",
-            "title": title.lower(),
-            "posted": posted_dt,
-            "text": f"<b>{html.escape(title)}</b>\n"
-                    f"{html.escape(j.get('company') or '')}\n{j.get('url', '')}"})
+        title = j.get("title") or ""
+            company = (j.get("company") or {}).get("display_name") or ""
+            jobs.append({
+                "id": f"az_{jid}",
+                "title": title.lower(),
+                "text": f"<b>{html.escape(title)}</b>\n"
+                        f"{html.escape(company)}\n{j.get('redirect_url', '')}"})
     jobs.sort(key=lambda j: j["posted"], reverse=True)
     return jobs
 
@@ -107,9 +133,11 @@ def fetch_adzuna():
             seen_ids.add(jid)
             title = j.get("title") or ""
             company = (j.get("company") or {}).get("display_name") or ""
+            desc = j.get("description") or ""
             jobs.append({
                 "id": f"az_{jid}",
                 "title": title.lower(),
+                "bucket": experience_bucket(f"{title} {desc}"),
                 "text": f"<b>{html.escape(title)}</b>\n"
                         f"{html.escape(company)}\n{j.get('redirect_url', '')}"})
     return jobs
@@ -148,8 +176,13 @@ def main():
                 break
         if not fresh:
             continue
-        text = (f"Fresh matching jobs ({len(fresh)}):\n\n"
-                + "\n\n".join(j["text"] for j in fresh))
+        sections = []
+        for b in BUCKET_ORDER:
+            items = [j for j in fresh if j["bucket"] == b]
+            if items:
+                sections.append(f"<b>— {b} —</b>\n\n"
+                                 + "\n\n".join(j["text"] for j in items))
+        text = f"Fresh matching jobs ({len(fresh)}):\n\n" + "\n\n".join(sections)
         if send(cid, text):
             mark_sent(cid, [j["id"] for j in fresh])
             delivered += 1
