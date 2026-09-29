@@ -91,6 +91,7 @@ def fetch_all_jobs():
             "title": title.lower(),
             "posted": posted_dt,
             "bucket": experience_bucket(f"{title} {desc}"),
+            "source": "remoteok",
             "text": f"<b>{html.escape(title)}</b>\n"
                     f"{html.escape(j.get('company') or '')}\n{j.get('url', '')}"})
     recent.sort(key=lambda j: j["posted"], reverse=True)
@@ -115,6 +116,7 @@ def fetch_all_jobs():
                 jobs.append({
                     "title": title.lower(),
                     "bucket": experience_bucket(f"{title} {desc}"),
+                    "source": "adzuna",
                     "text": f"<b>{html.escape(title)}</b>\n"
                             f"{html.escape(company)}\n{j.get('redirect_url', '')}"})
     return jobs
@@ -137,6 +139,8 @@ def fetch_jobs(keywords):
         if items:
             sections.append(f"<b>— {b} —</b>\n\n"
                              + "\n\n".join(j["text"] for j in items))
+    if any(j.get("source") == "adzuna" for j in matched):
+        sections.append('<a href="https://www.adzuna.in">Jobs by Adzuna</a>')
     return sections
 
 
