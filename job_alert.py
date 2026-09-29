@@ -7,6 +7,8 @@ import requests
 BOT_TOKEN = os.environ["BOT_TOKEN"]
 SUPABASE_URL = os.environ["SUPABASE_URL"].rstrip("/")
 SUPABASE_KEY = os.environ["SUPABASE_KEY"]
+ADZUNA_APP_ID = os.environ.get("ADZUNA_APP_ID")
+ADZUNA_APP_KEY = os.environ.get("ADZUNA_APP_KEY")
 
 TG = f"https://api.telegram.org/bot{BOT_TOKEN}"
 USERS = f"{SUPABASE_URL}/rest/v1/users"
@@ -31,6 +33,8 @@ def deactivate(chat_id):
 
 
 def already_sent(chat_id, ids):
+    if not ids:
+        return set()
     r = requests.get(SENT, headers=H, timeout=20, params={
         "chat_id": f"eq.{chat_id}",
         "job_id": "in.(" + ",".join(ids) + ")",
@@ -52,7 +56,7 @@ def prune():
                     params={"sent_at": f"lt.{cutoff}"})
 
 
-def fetch_jobs():
+def fetch_remoteok():
     r = requests.get("https://remoteok.com/api",
                      headers={"User-Agent": "Mozilla/5.0"}, timeout=30)
     r.raise_for_status()
@@ -63,10 +67,41 @@ def fetch_jobs():
             continue
         title = j.get("position") or ""
         jobs.append({
-            "id": jid,
+            "id": f"ro_{jid}",
             "title": title.lower(),
             "text": f"<b>{html.escape(title)}</b>\n"
                     f"{html.escape(j.get('company') or '')}\n{j.get('url', '')}"})
+    return jobs
+
+
+def fetch_adzuna():
+    if not (ADZUNA_APP_ID and ADZUNA_APP_KEY):
+        return []
+    jobs, seen_ids = [], set()
+    for query in ["data analyst", "software engineer", "software developer"]:
+        try:
+            r = requests.get(
+                "https://api.adzuna.com/v1/api/jobs/in/search/1",
+                params={"app_id": ADZUNA_APP_ID, "app_key": ADZUNA_APP_KEY,
+                        "results_per_page": 20, "what": query,
+                        "where": "bangalore", "content-type": "application/json"},
+                timeout=30)
+            r.raise_for_status()
+        except requests.RequestException as e:
+            print("adzuna error:", type(e).__name__)
+            continue
+        for j in r.json().get("results", []):
+            jid = str(j.get("id") or "")
+            if not jid.isalnum() or jid in seen_ids:
+                continue
+            seen_ids.add(jid)
+            title = j.get("title") or ""
+            company = (j.get("company") or {}).get("display_name") or ""
+            jobs.append({
+                "id": f"az_{jid}",
+                "title": title.lower(),
+                "text": f"<b>{html.escape(title)}</b>\n"
+                        f"{html.escape(company)}\n{j.get('redirect_url', '')}"})
     return jobs
 
 
@@ -81,7 +116,7 @@ def send(chat_id, text):
 
 def main():
     users = get_users()
-    jobs = fetch_jobs()
+    jobs = fetch_remoteok() + fetch_adzuna()
     if not jobs:
         print("no jobs fetched")
         return
