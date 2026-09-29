@@ -149,4 +149,14 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except Exception as e:
+        print("fatal error:", type(e).__name__, str(e))
+        try:
+            requests.post(f"{TG}/sendMessage", timeout=15, json={
+                "chat_id": next(iter(get_users()), {}).get("chat_id", ""),
+                "text": f"Job alert run failed: {type(e).__name__}"})
+        except Exception:
+            pass
+        raise
