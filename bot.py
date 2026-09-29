@@ -82,6 +82,7 @@ HELP = ("Commands:\n"
         "/keywords - view or set your job titles\n"
         "  e.g. /keywords data analyst, sql\n"
         "  /keywords clear - reset to defaults\n"
+        "/suggest your idea - send feedback to the bot's creator\n"
         "/stop - pause alerts\n"
         "/start - resume alerts")
 
