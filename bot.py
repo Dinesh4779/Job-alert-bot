@@ -9,6 +9,7 @@ SUPABASE_KEY = os.environ["SUPABASE_KEY"]
 ADZUNA_APP_ID = os.environ.get("ADZUNA_APP_ID")
 ADZUNA_APP_KEY = os.environ.get("ADZUNA_APP_KEY")
 WEBHOOK_SECRET = os.environ["WEBHOOK_SECRET"]
+OWNER_CHAT_ID = os.environ.get("OWNER_CHAT_ID")
 PUBLIC_URL = os.environ.get("RENDER_EXTERNAL_URL", "")
 
 TG = f"https://api.telegram.org/bot{BOT_TOKEN}"
