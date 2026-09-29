@@ -99,13 +99,15 @@ def fetch_remoteok():
             continue
         if posted_dt < cutoff:
             continue
-        title = j.get("title") or ""
-            company = (j.get("company") or {}).get("display_name") or ""
-            jobs.append({
-                "id": f"az_{jid}",
-                "title": title.lower(),
-                "text": f"<b>{html.escape(title)}</b>\n"
-                        f"{html.escape(company)}\n{j.get('redirect_url', '')}"})
+        title = j.get("position") or ""
+        desc = re.sub(r"<[^>]+>", " ", j.get("description") or "")
+        jobs.append({
+            "id": f"ro_{jid}",
+            "title": title.lower(),
+            "posted": posted_dt,
+            "bucket": experience_bucket(f"{title} {desc}"),
+            "text": f"<b>{html.escape(title)}</b>\n"
+                    f"{html.escape(j.get('company') or '')}\n{j.get('url', '')}"})
     jobs.sort(key=lambda j: j["posted"], reverse=True)
     return jobs
 
