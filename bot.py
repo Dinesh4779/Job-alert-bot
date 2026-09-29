@@ -144,14 +144,14 @@ def fetch_jobs(keywords):
     return sections
 
 
-HELP = ("Commands:\n"
-        "/jobs - get matching jobs now\n"
-        "/keywords - view or set your job titles\n"
-        "  e.g. /keywords data analyst, sql\n"
-        "  /keywords clear - reset to defaults\n"
-        "/suggest your idea - send feedback to the bot's creator\n"
-        "/stop - pause alerts\n"
-        "/start - resume alerts")
+HELP = ("<b>Commands</b>\n\n"
+        "🔎 /jobs — get matching jobs now\n\n"
+        "🏷 /keywords — view or set your job titles\n"
+        "   e.g. /keywords data analyst, sql\n"
+        "   /keywords clear — reset to defaults\n\n"
+        "💬 /suggest your idea — send feedback to the creator\n\n"
+        "⏸ /stop — pause alerts\n"
+        "▶️ /start — resume alerts")
 
 
 def handle(chat_id, text):
