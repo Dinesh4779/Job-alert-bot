@@ -185,6 +185,8 @@ def main():
                 sections.append(f"<b>— {b} —</b>\n\n"
                                  + "\n\n".join(j["text"] for j in items))
         text = f"Fresh matching jobs ({len(fresh)}):\n\n" + "\n\n".join(sections)
+        if any(j["id"].startswith("az_") for j in fresh):
+            text += '\n\n<a href="https://www.adzuna.in">Jobs by Adzuna</a>'
         if send(cid, text):
             mark_sent(cid, [j["id"] for j in fresh])
             delivered += 1
