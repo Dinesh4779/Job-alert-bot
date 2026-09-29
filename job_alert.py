@@ -17,13 +17,14 @@ SENT = f"{SUPABASE_URL}/rest/v1/sent_jobs"
 H = {"apikey": SUPABASE_KEY, "Content-Type": "application/json"}
 DEFAULT_KEYWORDS = ["data analyst", "data analytics", "sql analyst",
                     "software engineer", "software developer"]
+DEFAULT_LOCATION = "bangalore"
 MAX_PER_ALERT = 10
 KEEP_DAYS = 30
 
 
 def get_users():
     r = requests.get(USERS, headers=H, timeout=20, params={
-        "active": "eq.true", "select": "chat_id,keywords"})
+        "active": "eq.true", "select": "chat_id,keywords,location"})
     r.raise_for_status()
     return r.json()
 
@@ -112,7 +113,7 @@ def fetch_remoteok():
     return jobs
 
 
-def fetch_adzuna():
+def fetch_adzuna(location):
     if not (ADZUNA_APP_ID and ADZUNA_APP_KEY):
         return []
     jobs, seen_ids = [], set()
@@ -122,7 +123,7 @@ def fetch_adzuna():
                 "https://api.adzuna.com/v1/api/jobs/in/search/1",
                 params={"app_id": ADZUNA_APP_ID, "app_key": ADZUNA_APP_KEY,
                         "results_per_page": 20, "what": query,
-                        "where": "bangalore", "content-type": "application/json"},
+                        "where": location, "content-type": "application/json"},
                 timeout=30)
             r.raise_for_status()
         except requests.RequestException as e:
@@ -137,7 +138,7 @@ def fetch_adzuna():
             company = (j.get("company") or {}).get("display_name") or ""
             desc = j.get("description") or ""
             jobs.append({
-                "id": f"az_{jid}",
+                "id": f"az_{location}_{jid}",
                 "title": title.lower(),
                 "bucket": experience_bucket(f"{title} {desc}"),
                 "text": f"<b>{html.escape(title)}</b>\n"
@@ -156,18 +157,22 @@ def send(chat_id, text):
 
 def main():
     users = get_users()
-    jobs = fetch_remoteok() + fetch_adzuna()
-    if not jobs:
-        print("no jobs fetched")
-        return
-    all_ids = [j["id"] for j in jobs]
+    base_jobs = fetch_remoteok()
+    adzuna_cache = {}
     delivered = 0
     for u in users:
         cid = u["chat_id"]
         kws = u.get("keywords") or DEFAULT_KEYWORDS
+        loc = u.get("location") or DEFAULT_LOCATION
+        if loc not in adzuna_cache:
+            adzuna_cache[loc] = fetch_adzuna(loc)
+        jobs = base_jobs + adzuna_cache[loc]
+        if not jobs:
+            continue
+        all_ids = [j["id"] for j in jobs]
         seen = already_sent(cid, all_ids)
-        matched = [j for j in jobs if j["id"] not in seen
-                   and any(k in j["title"] for k in kws)]
+        fresh = [j for j in jobs if j["id"] not in seen
+                 and any(k in j["title"] for k in kws)]
         per_source, fresh, counts = 5, [], {}
         for j in matched:
             src = j["id"].split("_", 1)[0]
