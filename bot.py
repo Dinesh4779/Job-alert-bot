@@ -151,6 +151,8 @@ HELP = ("<b>Commands</b>\n\n"
         "🏷 /roles — view or set your job roles\n"
         "   e.g. /roles data analyst, sql\n"
         "   /roles clear — reset to defaults\n\n"
+        "📍 /location — view or set your job location\n"
+        "   e.g. /location mumbai\n\n"
         "💬 /suggest your idea — send feedback to the creator\n\n"
         "⏸ /stop — pause alerts\n"
         "▶️ /start — resume alerts")
