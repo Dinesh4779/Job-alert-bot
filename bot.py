@@ -123,9 +123,13 @@ def handle(chat_id, text):
             db_upsert(chat_id, keywords=[])
             send(chat_id, "Keywords cleared. Using defaults.")
         else:
-            kws = [k.strip().lower()[:40] for k in arg.split(",") if k.strip()][:10]
-            db_upsert(chat_id, keywords=kws)
-            send(chat_id, "Saved: " + html.escape(", ".join(kws)))
+            kws = [k.strip().lower()[:40] for k in arg.split(",")
+                   if len(k.strip()) >= 3][:10]
+            if not kws:
+                send(chat_id, "Each keyword needs at least 3 letters. Try again, e.g.\n/keywords data analyst, sql")
+            else:
+                db_upsert(chat_id, keywords=kws)
+                send(chat_id, "Saved: " + html.escape(", ".join(kws)))
     elif cmd == "/suggest":
         if not arg:
             send(chat_id, "Add your suggestion after the command, e.g.\n/suggest add LinkedIn jobs")
@@ -161,6 +165,11 @@ def webhook():
             handle(chat["id"], msg["text"])
         except Exception as e:
             print("error:", type(e).__name__)
+            if OWNER_CHAT_ID:
+                try:
+                    send(OWNER_CHAT_ID, f"Bot error: {type(e).__name__} in handle()")
+                except Exception:
+                    pass
     return "ok"
 
 
