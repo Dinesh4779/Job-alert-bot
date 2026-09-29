@@ -146,9 +146,9 @@ def fetch_jobs(keywords):
 
 HELP = ("<b>Commands</b>\n\n"
         "🔎 /jobs — get matching jobs now\n\n"
-        "🏷 /keywords — view or set your job titles\n"
-        "   e.g. /keywords data analyst, sql\n"
-        "   /keywords clear — reset to defaults\n\n"
+        "🏷 /roles — view or set your job roles\n"
+        "   e.g. /roles data analyst, sql\n"
+        "   /roles clear — reset to defaults\n\n"
         "💬 /suggest your idea — send feedback to the creator\n\n"
         "⏸ /stop — pause alerts\n"
         "▶️ /start — resume alerts")
