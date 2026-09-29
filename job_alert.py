@@ -174,7 +174,7 @@ def main():
         fresh = [j for j in jobs if j["id"] not in seen
                  and any(k in j["title"] for k in kws)]
         per_source, fresh, counts = 5, [], {}
-        for j in matched:
+        for j in fresh:
             src = j["id"].split("_", 1)[0]
             if counts.get(src, 0) < per_source:
                 fresh.append(j)
