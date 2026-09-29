@@ -20,6 +20,7 @@ DB = f"{SUPABASE_URL}/rest/v1/users"
 DB_HEADERS = {"apikey": SUPABASE_KEY, "Content-Type": "application/json"}
 DEFAULT_KEYWORDS = ["data analyst", "data analytics", "sql analyst",
                     "software engineer", "software developer"]
+DEFAULT_LOCATION = "bangalore"
 CACHE_SECONDS = 600
 _cache = {"jobs": None, "time": 0}
 
