@@ -2,6 +2,7 @@ import os
 import html
 import requests
 import time
+import re
 from datetime import datetime, timedelta, timezone
 from flask import Flask, request
 
@@ -44,6 +45,31 @@ def db_get(chat_id):
     rows = r.json() if r.ok else []
     return rows[0] if rows else None
 
+EXP_RANGE = re.compile(r'(\d{1,2})\s*(?:-|to)\s*(\d{1,2})\s*\+?\s*(?:yrs?|years?)', re.I)
+EXP_PLUS = re.compile(r'(\d{1,2})\s*\+\s*(?:yrs?|years?)', re.I)
+EXP_MIN = re.compile(r'(?:minimum|min\.?|at least)\s*(\d{1,2})\s*(?:yrs?|years?)', re.I)
+EXP_SINGLE = re.compile(r'(\d{1,2})\s*(?:yrs?|years?)', re.I)
+BUCKET_ORDER = ["0-2 yrs experience", "2-4 yrs experience",
+                "4-6 yrs experience", "6+ yrs experience",
+                "Experience not specified"]
+
+
+def experience_bucket(text):
+    if not text:
+        return BUCKET_ORDER[-1]
+    m = EXP_RANGE.search(text) or EXP_PLUS.search(text) or \
+        EXP_MIN.search(text) or EXP_SINGLE.search(text)
+    if not m:
+        return BUCKET_ORDER[-1]
+    lo = int(m.group(1))
+    if lo <= 2:
+        return BUCKET_ORDER[0]
+    if lo <= 4:
+        return BUCKET_ORDER[1]
+    if lo <= 6:
+        return BUCKET_ORDER[2]
+    return BUCKET_ORDER[3]
+
 
 def fetch_all_jobs():
     jobs = []
@@ -60,9 +86,11 @@ def fetch_all_jobs():
         if posted_dt < cutoff:
             continue
         title = j.get("position") or ""
+        desc = re.sub(r"<[^>]+>", " ", j.get("description") or "")
         recent.append({
             "title": title.lower(),
             "posted": posted_dt,
+            "bucket": experience_bucket(f"{title} {desc}"),
             "text": f"<b>{html.escape(title)}</b>\n"
                     f"{html.escape(j.get('company') or '')}\n{j.get('url', '')}"})
     recent.sort(key=lambda j: j["posted"], reverse=True)
@@ -83,8 +111,10 @@ def fetch_all_jobs():
             for j in r.json().get("results", []):
                 title = j.get("title") or ""
                 company = (j.get("company") or {}).get("display_name") or ""
+                desc = j.get("description") or ""
                 jobs.append({
                     "title": title.lower(),
+                    "bucket": experience_bucket(f"{title} {desc}"),
                     "text": f"<b>{html.escape(title)}</b>\n"
                             f"{html.escape(company)}\n{j.get('redirect_url', '')}"})
     return jobs
@@ -100,8 +130,14 @@ def get_cached_jobs():
 
 def fetch_jobs(keywords):
     jobs = get_cached_jobs()
-    matched = [j for j in jobs if any(k in j["title"] for k in keywords)]
-    return [j["text"] for j in matched[:10]]
+    matched = [j for j in jobs if any(k in j["title"] for k in keywords)][:10]
+    sections = []
+    for b in BUCKET_ORDER:
+        items = [j for j in matched if j["bucket"] == b]
+        if items:
+            sections.append(f"<b>— {b} —</b>\n\n"
+                             + "\n\n".join(j["text"] for j in items))
+    return sections
 
 
 HELP = ("Commands:\n"
@@ -153,9 +189,9 @@ def handle(chat_id, text):
     elif cmd == "/jobs":
         user = db_get(chat_id)
         kws = (user or {}).get("keywords") or DEFAULT_KEYWORDS
-        jobs = fetch_jobs(kws)
-        if jobs:
-            send(chat_id, f"Matching jobs ({len(jobs)}):\n\n" + "\n\n".join(jobs[:10]))
+        sections = fetch_jobs(kws)
+        if sections:
+            send(chat_id, "Matching jobs:\n\n" + "\n\n".join(sections))
         else:
             send(chat_id, "No matching jobs right now. Try /keywords with other titles.")
     else:
