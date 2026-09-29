@@ -42,7 +42,7 @@ def db_upsert(chat_id, **fields):
 
 def db_get(chat_id):
     r = requests.get(DB, headers=DB_HEADERS, timeout=15, params={
-        "chat_id": f"eq.{chat_id}", "select": "keywords,active"})
+        "chat_id": f"eq.{chat_id}", "select": "keywords,active,location"})
     rows = r.json() if r.ok else []
     return rows[0] if rows else None
 
@@ -72,7 +72,7 @@ def experience_bucket(text):
     return BUCKET_ORDER[3]
 
 
-def fetch_all_jobs():
+def fetch_all_jobs(location):
     jobs = []
     r = requests.get("https://remoteok.com/api",
                      headers={"User-Agent": "Mozilla/5.0"}, timeout=20)
@@ -105,7 +105,7 @@ def fetch_all_jobs():
                     "https://api.adzuna.com/v1/api/jobs/in/search/1",
                     params={"app_id": ADZUNA_APP_ID, "app_key": ADZUNA_APP_KEY,
                             "results_per_page": 15, "what": kw,
-                            "where": "bangalore", "content-type": "application/json"},
+                            "where": location, "content-type": "application/json"},
                     timeout=20)
                 r.raise_for_status()
             except requests.RequestException:
@@ -184,6 +184,15 @@ def handle(chat_id, text):
             else:
                 db_upsert(chat_id, keywords=kws)
                 send(chat_id, "Saved: " + html.escape(", ".join(kws)))
+    elif cmd == "/location":
+        if not arg:
+            user = db_get(chat_id)
+            loc = (user or {}).get("location") or DEFAULT_LOCATION
+            send(chat_id, f"Your location: {html.escape(loc)}\nChange it with /location mumbai")
+        else:
+            loc = arg.strip().lower()[:40]
+            db_upsert(chat_id, location=loc)
+            send(chat_id, f"Location set to: {html.escape(loc)}")
     elif cmd == "/suggest":
         if not arg:
             send(chat_id, "Add your suggestion after the command, e.g.\n/suggest add LinkedIn jobs")
