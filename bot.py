@@ -167,19 +167,19 @@ def handle(chat_id, text):
     elif cmd == "/stop":
         db_upsert(chat_id, active=False)
         send(chat_id, "Alerts paused. Send /start to resume.")
-    elif cmd == "/keywords":
+    elif cmd in ("/roles", "/keywords"):
         if not arg:
             user = db_get(chat_id)
             kws = (user or {}).get("keywords") or DEFAULT_KEYWORDS
-            send(chat_id, "Your keywords: " + html.escape(", ".join(kws)))
+            send(chat_id, "Your job roles: " + html.escape(", ".join(kws)))
         elif arg.lower() == "clear":
             db_upsert(chat_id, keywords=[])
-            send(chat_id, "Keywords cleared. Using defaults.")
+            send(chat_id, "Job roles cleared. Using defaults.")
         else:
             kws = [k.strip().lower()[:40] for k in arg.split(",")
                    if len(k.strip()) >= 3][:10]
             if not kws:
-                send(chat_id, "Each keyword needs at least 3 letters. Try again, e.g.\n/keywords data analyst, sql")
+                send(chat_id, "Each job role needs at least 3 letters. Try again, e.g.\n/roles data analyst, sql")
             else:
                 db_upsert(chat_id, keywords=kws)
                 send(chat_id, "Saved: " + html.escape(", ".join(kws)))
