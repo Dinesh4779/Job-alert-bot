@@ -126,8 +126,16 @@ def main():
         cid = u["chat_id"]
         kws = u.get("keywords") or DEFAULT_KEYWORDS
         seen = already_sent(cid, all_ids)
-        fresh = [j for j in jobs if j["id"] not in seen
-                 and any(k in j["title"] for k in kws)][:MAX_PER_ALERT]
+        matched = [j for j in jobs if j["id"] not in seen
+                   and any(k in j["title"] for k in kws)]
+        per_source, fresh, counts = 5, [], {}
+        for j in matched:
+            src = j["id"].split("_", 1)[0]
+            if counts.get(src, 0) < per_source:
+                fresh.append(j)
+                counts[src] = counts.get(src, 0) + 1
+            if len(fresh) >= MAX_PER_ALERT:
+                break
         if not fresh:
             continue
         text = (f"Fresh matching jobs ({len(fresh)}):\n\n"
