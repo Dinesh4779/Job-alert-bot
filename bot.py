@@ -2,6 +2,7 @@ import os
 import html
 import requests
 import time
+from datetime import datetime, timedelta, timezone
 from flask import Flask, request
 
 BOT_TOKEN = os.environ["BOT_TOKEN"]
@@ -48,12 +49,24 @@ def fetch_all_jobs():
     jobs = []
     r = requests.get("https://remoteok.com/api",
                      headers={"User-Agent": "Mozilla/5.0"}, timeout=20)
+    cutoff = datetime.now(timezone.utc) - timedelta(days=21)
+    recent = []
     for j in r.json()[1:]:
+        posted = j.get("date") or ""
+        try:
+            posted_dt = datetime.fromisoformat(posted.replace("Z", "+00:00"))
+        except ValueError:
+            continue
+        if posted_dt < cutoff:
+            continue
         title = j.get("position") or ""
-        jobs.append({
+        recent.append({
             "title": title.lower(),
+            "posted": posted_dt,
             "text": f"<b>{html.escape(title)}</b>\n"
                     f"{html.escape(j.get('company') or '')}\n{j.get('url', '')}"})
+    recent.sort(key=lambda j: j["posted"], reverse=True)
+    jobs += recent
 
     if ADZUNA_APP_ID and ADZUNA_APP_KEY:
         for kw in ["data analyst", "software engineer", "software developer"]:
