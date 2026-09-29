@@ -1,6 +1,7 @@
 import os
 import html
 import requests
+import time
 from flask import Flask, request
 
 BOT_TOKEN = os.environ["BOT_TOKEN"]
@@ -17,6 +18,8 @@ DB = f"{SUPABASE_URL}/rest/v1/users"
 DB_HEADERS = {"apikey": SUPABASE_KEY, "Content-Type": "application/json"}
 DEFAULT_KEYWORDS = ["data analyst", "data analytics", "sql analyst",
                     "software engineer", "software developer"]
+CACHE_SECONDS = 600
+_cache = {"jobs": None, "time": 0}
 
 app = Flask(__name__)
 
@@ -41,26 +44,24 @@ def db_get(chat_id):
     return rows[0] if rows else None
 
 
-def fetch_jobs(keywords):
-    found = []
+def fetch_all_jobs():
+    jobs = []
     r = requests.get("https://remoteok.com/api",
                      headers={"User-Agent": "Mozilla/5.0"}, timeout=20)
     for j in r.json()[1:]:
-        title = (j.get("position") or "").lower()
-        if any(k in title for k in keywords):
-            found.append(
-                f"<b>{html.escape(j.get('position', ''))}</b>\n"
-                f"{html.escape(j.get('company', ''))}\n{j.get('url', '')}")
-        if len(found) >= 5:
-            break
+        title = j.get("position") or ""
+        jobs.append({
+            "title": title.lower(),
+            "text": f"<b>{html.escape(title)}</b>\n"
+                    f"{html.escape(j.get('company') or '')}\n{j.get('url', '')}"})
 
     if ADZUNA_APP_ID and ADZUNA_APP_KEY:
-        for kw in keywords[:3]:
+        for kw in ["data analyst", "software engineer", "software developer"]:
             try:
                 r = requests.get(
                     "https://api.adzuna.com/v1/api/jobs/in/search/1",
                     params={"app_id": ADZUNA_APP_ID, "app_key": ADZUNA_APP_KEY,
-                            "results_per_page": 10, "what": kw,
+                            "results_per_page": 15, "what": kw,
                             "where": "bangalore", "content-type": "application/json"},
                     timeout=20)
                 r.raise_for_status()
@@ -69,12 +70,25 @@ def fetch_jobs(keywords):
             for j in r.json().get("results", []):
                 title = j.get("title") or ""
                 company = (j.get("company") or {}).get("display_name") or ""
-                found.append(
-                    f"<b>{html.escape(title)}</b>\n"
-                    f"{html.escape(company)}\n{j.get('redirect_url', '')}")
-            if len(found) >= 10:
-                break
-    return found
+                jobs.append({
+                    "title": title.lower(),
+                    "text": f"<b>{html.escape(title)}</b>\n"
+                            f"{html.escape(company)}\n{j.get('redirect_url', '')}"})
+    return jobs
+
+
+def get_cached_jobs():
+    now = time.time()
+    if _cache["jobs"] is None or now - _cache["time"] > CACHE_SECONDS:
+        _cache["jobs"] = fetch_all_jobs()
+        _cache["time"] = now
+    return _cache["jobs"]
+
+
+def fetch_jobs(keywords):
+    jobs = get_cached_jobs()
+    matched = [j for j in jobs if any(k in j["title"] for k in keywords)]
+    return [j["text"] for j in matched[:10]]
 
 
 HELP = ("Commands:\n"
