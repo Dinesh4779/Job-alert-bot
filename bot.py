@@ -22,7 +22,7 @@ DEFAULT_KEYWORDS = ["data analyst", "data analytics", "sql analyst",
                     "software engineer", "software developer"]
 DEFAULT_LOCATION = "bangalore"
 CACHE_SECONDS = 600
-_cache = {"jobs": None, "time": 0}
+_cache = {}
 
 app = Flask(__name__)
 
@@ -123,16 +123,17 @@ def fetch_all_jobs(location):
     return jobs
 
 
-def get_cached_jobs():
+def get_cached_jobs(location):
     now = time.time()
-    if _cache["jobs"] is None or now - _cache["time"] > CACHE_SECONDS:
-        _cache["jobs"] = fetch_all_jobs()
-        _cache["time"] = now
-    return _cache["jobs"]
+    entry = _cache.get(location)
+    if entry is None or now - entry["time"] > CACHE_SECONDS:
+        entry = {"jobs": fetch_all_jobs(location), "time": now}
+        _cache[location] = entry
+    return entry["jobs"]
 
 
-def fetch_jobs(keywords):
-    jobs = get_cached_jobs()
+def fetch_jobs(keywords, location):
+    jobs = get_cached_jobs(location)
     matched = [j for j in jobs if any(k in j["title"] for k in keywords)][:10]
     sections = []
     for b in BUCKET_ORDER:
@@ -203,11 +204,14 @@ def handle(chat_id, text):
     elif cmd == "/jobs":
         user = db_get(chat_id)
         kws = (user or {}).get("keywords") or DEFAULT_KEYWORDS
-        sections = fetch_jobs(kws)
+        loc = (user or {}).get("location") or DEFAULT_LOCATION
+        sections = fetch_jobs(kws, loc)
         if sections:
             send(chat_id, "Matching jobs:\n\n" + "\n\n".join(sections))
+        elif not get_cached_jobs(loc):
+            send(chat_id, "Couldn't fetch jobs right now, the job sites may be temporarily unavailable. Try again in a few minutes.")
         else:
-            send(chat_id, "No matching jobs right now. Try /keywords with other titles.")
+            send(chat_id, "No matching jobs right now. Try /roles with other titles.")
     else:
         send(chat_id, "I didn't get that.\n\n" + HELP)
 
