@@ -67,10 +67,16 @@ def db_get(chat_id):
     rows = r.json() if r.ok else []
     return rows[0] if rows else None
 
-EXP_RANGE = re.compile(r'(\d{1,2})\s*(?:-|to)\s*(\d{1,2})\s*\+?\s*(?:yrs?|years?)', re.I)
-EXP_PLUS = re.compile(r'(\d{1,2})\s*\+\s*(?:yrs?|years?)', re.I)
-EXP_MIN = re.compile(r'(?:minimum|min\.?|at least)\s*(\d{1,2})\s*(?:yrs?|years?)', re.I)
-EXP_SINGLE = re.compile(r'(\d{1,2})\s*(?:yrs?|years?)', re.I)
+EXP_RANGE = re.compile(
+    r'(\d{1,2})\s*(?:-|to)\s*(\d{1,2})\s*\+?\s*(?:yrs?|years?)'
+    r'(?:\s+of)?\s*(?:relevant\s+)?experience', re.I)
+EXP_PLUS = re.compile(
+    r'(\d{1,2})\s*\+\s*(?:yrs?|years?)(?:\s+of)?\s*(?:relevant\s+)?experience', re.I)
+EXP_MIN = re.compile(
+    r'(?:minimum|min\.?|at least)\s*(\d{1,2})\s*(?:yrs?|years?)'
+    r'(?:\s+of)?\s*(?:relevant\s+)?experience', re.I)
+EXP_SINGLE = re.compile(
+    r'experience\s*(?:of|:)?\s*(\d{1,2})\s*(?:-|\+)?\s*(?:yrs?|years?)', re.I)
 BUCKET_ORDER = ["0-2 yrs experience", "2-4 yrs experience",
                 "4-6 yrs experience", "6+ yrs experience",
                 "Experience not specified"]
