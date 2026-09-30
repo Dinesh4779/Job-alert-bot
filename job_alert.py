@@ -164,15 +164,22 @@ def main():
         cid = u["chat_id"]
         kws = u.get("keywords") or DEFAULT_KEYWORDS
         locs = [l.strip() for l in (u.get("location") or DEFAULT_LOCATION).split(",") if l.strip()]
-        jobs = list(base_jobs)
-        seen_text = {j["text"] for j in jobs}
         for loc in locs:
             if loc not in adzuna_cache:
                 adzuna_cache[loc] = fetch_adzuna(loc)
-            for j in adzuna_cache[loc]:
-                if j["text"] not in seen_text:
-                    seen_text.add(j["text"])
-                    jobs.append(j)
+        seen_text = set()
+        per_loc = [base_jobs]
+        for loc in locs:
+            per_loc.append(adzuna_cache[loc])
+        jobs, i = [], 0
+        while any(i < len(lst) for lst in per_loc):
+            for lst in per_loc:
+                if i < len(lst):
+                    j = lst[i]
+                    if j["text"] not in seen_text:
+                        seen_text.add(j["text"])
+                        jobs.append(j)
+            i += 1
         if not jobs:
             continue
         all_ids = [j["id"] for j in jobs]
