@@ -23,6 +23,8 @@ DEFAULT_KEYWORDS = ["data analyst", "data analytics", "sql analyst",
 DEFAULT_LOCATION = "bangalore"
 MAX_PER_ALERT = 10
 KEEP_DAYS = 30
+ADZUNA_CACHE_URL = f"{SUPABASE_URL}/rest/v1/adzuna_cache"
+ADZUNA_CACHE_MINUTES = 60
 
 
 def get_users():
@@ -116,6 +118,26 @@ def fetch_remoteok():
     return jobs
 
 
+def get_adzuna_cached(location):
+    now = datetime.now(timezone.utc)
+    r = requests.get(ADZUNA_CACHE_URL, headers=H, timeout=15, params={
+        "location": f"eq.{location}", "select": "jobs,fetched_at"})
+    if r.ok and r.json():
+        row = r.json()[0]
+        fetched_at = datetime.fromisoformat(row["fetched_at"].replace("Z", "+00:00"))
+        if now - fetched_at < timedelta(minutes=ADZUNA_CACHE_MINUTES):
+            return row["jobs"]
+    jobs = fetch_adzuna(location)
+    payload = {"location": location, "jobs": jobs,
+               "fetched_at": now.isoformat()}
+    h = {**H, "Prefer": "resolution=merge-duplicates,return=minimal"}
+    try:
+        requests.post(ADZUNA_CACHE_URL, headers=h, json=payload, timeout=15)
+    except requests.RequestException:
+        pass
+    return jobs
+
+
 def fetch_adzuna(location):
     if not (ADZUNA_APP_ID and ADZUNA_APP_KEY):
         return []
@@ -170,7 +192,7 @@ def main():
         locs = [l.strip() for l in (u.get("location") or DEFAULT_LOCATION).split(",") if l.strip()]
         for loc in locs:
             if loc not in adzuna_cache:
-                adzuna_cache[loc] = fetch_adzuna(loc)
+                adzuna_cache[loc] = get_adzuna_cached(loc)
         seen_text = set()
         per_loc = [base_jobs]
         for loc in locs:
