@@ -24,6 +24,24 @@ DEFAULT_KEYWORDS = ["data analyst", "data analytics", "sql analyst",
                     "backend developer", "full stack developer",
                     "qa engineer"]
 DEFAULT_LOCATION = "bangalore"
+LOCATION_ALIASES = {
+    "banglore": "bangalore", "bengaluru": "bangalore", "blr": "bangalore",
+    "bombay": "mumbai",
+    "new delhi": "delhi", "ncr": "delhi",
+    "gurugram": "gurgaon",
+    "hyd": "hyderabad",
+    "madras": "chennai",
+    "calcutta": "kolkata",
+}
+
+
+def normalize_location(loc):
+    key = loc.strip().lower()
+    return LOCATION_ALIASES.get(key, key)
+
+
+EXP_CODES = {"0-2": "0-2 yrs experience", "2-4": "2-4 yrs experience",
+             "4-6": "4-6 yrs experience", "6+": "6+ yrs experience"}
 CACHE_SECONDS = 600
 _cache = {}
 
@@ -235,7 +253,7 @@ def handle(chat_id, text):
     elif cmd == "/jobs":
         user = db_get(chat_id)
         kws = (user or {}).get("keywords") or DEFAULT_KEYWORDS
-        locs = [l.strip() for l in ((user or {}).get("location") or DEFAULT_LOCATION).split(",") if l.strip()]
+        locs = [normalize_location(l) for l in ((user or {}).get("location") or DEFAULT_LOCATION).split(",") if l.strip()]
         sections, jobs = fetch_jobs(kws, locs)
         if sections:
             send(chat_id, "Matching jobs:\n\n" + "\n\n".join(sections))
