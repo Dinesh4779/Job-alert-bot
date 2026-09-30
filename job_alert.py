@@ -218,7 +218,8 @@ def fetch_jooble(location):
     if not JOOBLE_API_KEY:
         return []
     jobs = []
-    for kw in ["data analyst", "software engineer", "qa engineer"]:
+    for kw in ["data analyst", "business analyst", "software engineer",
+                "frontend developer", "qa engineer"]
         try:
             r = requests.post(
                 f"https://jooble.org/api/{JOOBLE_API_KEY}",
