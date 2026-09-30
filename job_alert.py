@@ -184,10 +184,10 @@ def main():
             continue
         all_ids = [j["id"] for j in jobs]
         seen = already_sent(cid, all_ids)
-        fresh = [j for j in jobs if j["id"] not in seen
-                 and any(k in j["title"] for k in kws)]
+        matched = [j for j in jobs if j["id"] not in seen
+                   and any(k in j["title"] for k in kws)]
         per_source, fresh, counts = 5, [], {}
-        for j in fresh:
+        for j in matched:
             src = j["id"].split("_", 1)[0]
             if counts.get(src, 0) < per_source:
                 fresh.append(j)
