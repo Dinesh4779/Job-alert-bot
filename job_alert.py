@@ -21,6 +21,20 @@ DEFAULT_KEYWORDS = ["data analyst", "data analytics", "sql analyst",
                     "backend developer", "full stack developer",
                     "qa engineer"]
 DEFAULT_LOCATION = "bangalore"
+LOCATION_ALIASES = {
+    "banglore": "bangalore", "bengaluru": "bangalore", "blr": "bangalore",
+    "bombay": "mumbai",
+    "new delhi": "delhi", "ncr": "delhi",
+    "gurugram": "gurgaon",
+    "hyd": "hyderabad",
+    "madras": "chennai",
+    "calcutta": "kolkata",
+}
+
+
+def normalize_location(loc):
+    key = loc.strip().lower()
+    return LOCATION_ALIASES.get(key, key)
 MAX_PER_ALERT = 10
 KEEP_DAYS = 30
 ADZUNA_CACHE_URL = f"{SUPABASE_URL}/rest/v1/adzuna_cache"
@@ -189,7 +203,7 @@ def main():
     for u in users:
         cid = u["chat_id"]
         kws = u.get("keywords") or DEFAULT_KEYWORDS
-        locs = [l.strip() for l in (u.get("location") or DEFAULT_LOCATION).split(",") if l.strip()]
+        locs = [normalize_location(l) for l in (u.get("location") or DEFAULT_LOCATION).split(",") if l.strip()]
         for loc in locs:
             if loc not in adzuna_cache:
                 adzuna_cache[loc] = get_adzuna_cached(loc)
