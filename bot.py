@@ -11,6 +11,7 @@ SUPABASE_URL = os.environ["SUPABASE_URL"].rstrip("/")
 SUPABASE_KEY = os.environ["SUPABASE_KEY"]
 ADZUNA_APP_ID = os.environ.get("ADZUNA_APP_ID")
 ADZUNA_APP_KEY = os.environ.get("ADZUNA_APP_KEY")
+JOOBLE_API_KEY = os.environ.get("JOOBLE_API_KEY")
 WEBHOOK_SECRET = os.environ["WEBHOOK_SECRET"]
 OWNER_CHAT_ID = os.environ.get("OWNER_CHAT_ID")
 PUBLIC_URL = os.environ.get("RENDER_EXTERNAL_URL", "")
@@ -148,7 +149,28 @@ def fetch_all_jobs(location):
                     "source": "adzuna",
                     "text": f"<b>{html.escape(title)}</b>\n"
                             f"{html.escape(company)}\n{j.get('redirect_url', '')}"})
-    return jobs
+    
+    if JOOBLE_API_KEY:
+        for kw in ["data analyst", "software engineer", "qa engineer"]:
+            try:
+                r = requests.post(
+                    f"https://jooble.org/api/{JOOBLE_API_KEY}",
+                    json={"keywords": kw, "location": location},
+                    timeout=20)
+                r.raise_for_status()
+            except requests.RequestException:
+                continue
+            for j in r.json().get("jobs", []):
+                title = j.get("title") or ""
+                company = j.get("company") or ""
+                snippet = j.get("snippet") or ""
+                jobs.append({
+                    "title": title.lower(),
+                    "bucket": experience_bucket(f"{title} {snippet}"),
+                    "source": "jooble",
+                    "text": f"<b>{html.escape(title)}</b>\n"
+                            f"{html.escape(company)}\n{j.get('link', '')}"})
+  return jobs
 
 
 def get_cached_jobs(location):
