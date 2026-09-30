@@ -10,6 +10,8 @@ SUPABASE_URL = os.environ["SUPABASE_URL"].rstrip("/")
 SUPABASE_KEY = os.environ["SUPABASE_KEY"]
 ADZUNA_APP_ID = os.environ.get("ADZUNA_APP_ID")
 ADZUNA_APP_KEY = os.environ.get("ADZUNA_APP_KEY")
+JOOBLE_API_KEY = os.environ.get("JOOBLE_API_KEY")
+JOOBLE_CACHE_URL = f"{SUPABASE_URL}/rest/v1/jooble_cache"
 
 TG = f"https://api.telegram.org/bot{BOT_TOKEN}"
 USERS = f"{SUPABASE_URL}/rest/v1/users"
@@ -158,6 +160,26 @@ def get_adzuna_cached(location):
     return jobs
 
 
+def get_jooble_cached(location):
+    now = datetime.now(timezone.utc)
+    r = requests.get(JOOBLE_CACHE_URL, headers=H, timeout=15, params={
+        "location": f"eq.{location}", "select": "jobs,fetched_at"})
+    if r.ok and r.json():
+        row = r.json()[0]
+        fetched_at = datetime.fromisoformat(row["fetched_at"].replace("Z", "+00:00"))
+        if now - fetched_at < timedelta(minutes=ADZUNA_CACHE_MINUTES):
+            return row["jobs"]
+    jobs = fetch_jooble(location)
+    payload = {"location": location, "jobs": jobs,
+               "fetched_at": now.isoformat()}
+    h = {**H, "Prefer": "resolution=merge-duplicates,return=minimal"}
+    try:
+        requests.post(JOOBLE_CACHE_URL, headers=h, json=payload, timeout=15)
+    except requests.RequestException:
+        pass
+    return jobs
+
+
 def fetch_adzuna(location):
     if not (ADZUNA_APP_ID and ADZUNA_APP_KEY):
         return []
@@ -192,6 +214,33 @@ def fetch_adzuna(location):
     return jobs
 
 
+def fetch_jooble(location):
+    if not JOOBLE_API_KEY:
+        return []
+    jobs = []
+    for kw in ["data analyst", "software engineer", "qa engineer"]:
+        try:
+            r = requests.post(
+                f"https://jooble.org/api/{JOOBLE_API_KEY}",
+                json={"keywords": kw, "location": location},
+                timeout=20)
+            r.raise_for_status()
+        except requests.RequestException as e:
+            print("jooble error:", type(e).__name__)
+            continue
+        for j in r.json().get("jobs", []):
+            title = j.get("title") or ""
+            company = j.get("company") or ""
+            snippet = j.get("snippet") or ""
+            jobs.append({
+                "id": f"jb_{location}_{hash(j.get('link',''))}",
+                "title": title.lower(),
+                "bucket": experience_bucket(f"{title} {snippet}"),
+                "text": f"<b>{html.escape(title)}</b>\n"
+                        f"{html.escape(company)}\n{j.get('link', '')}"})
+    return jobs
+
+
 def send(chat_id, text):
     r = requests.post(f"{TG}/sendMessage", timeout=20, json={
         "chat_id": chat_id, "text": text, "parse_mode": "HTML",
@@ -212,7 +261,7 @@ def main():
         locs = [normalize_location(l) for l in (u.get("location") or DEFAULT_LOCATION).split(",") if l.strip()]
         for loc in locs:
             if loc not in adzuna_cache:
-                adzuna_cache[loc] = get_adzuna_cached(loc)
+                adzuna_cache[loc] = get_adzuna_cached(loc) + get_jooble_cached(loc)
         seen_text = set()
         per_loc = [base_jobs]
         for loc in locs:
