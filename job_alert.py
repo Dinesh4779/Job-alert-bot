@@ -16,7 +16,10 @@ USERS = f"{SUPABASE_URL}/rest/v1/users"
 SENT = f"{SUPABASE_URL}/rest/v1/sent_jobs"
 H = {"apikey": SUPABASE_KEY, "Content-Type": "application/json"}
 DEFAULT_KEYWORDS = ["data analyst", "data analytics", "sql analyst",
-                    "software engineer", "software developer"]
+                    "business analyst", "software engineer",
+                    "software developer", "frontend developer",
+                    "backend developer", "full stack developer",
+                    "qa engineer"]
 DEFAULT_LOCATION = "bangalore"
 MAX_PER_ALERT = 10
 KEEP_DAYS = 30
@@ -117,7 +120,8 @@ def fetch_adzuna(location):
     if not (ADZUNA_APP_ID and ADZUNA_APP_KEY):
         return []
     jobs, seen_ids = [], set()
-    for query in ["data analyst", "software engineer", "software developer"]:
+    for query in ["data analyst", "business analyst", "software engineer",
+                   "frontend developer", "qa engineer"]:
         try:
             r = requests.get(
                 "https://api.adzuna.com/v1/api/jobs/in/search/1",
