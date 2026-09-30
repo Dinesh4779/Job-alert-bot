@@ -171,7 +171,7 @@ def fetch_all_jobs(location):
                     "source": "jooble",
                     "text": f"<b>{html.escape(title)}</b>\n"
                             f"{html.escape(company)}\n{j.get('link', '')}"})
-  return jobs
+    return jobs
 
 
 def get_cached_jobs(location):
