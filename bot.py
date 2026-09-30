@@ -102,7 +102,8 @@ def fetch_all_jobs(location):
     jobs += recent
 
     if ADZUNA_APP_ID and ADZUNA_APP_KEY:
-        for kw in ["data analyst", "software engineer", "software developer"]:
+        for kw in ["data analyst", "business analyst", "software engineer",
+                       "frontend developer", "qa engineer"]:
             try:
                 r = requests.get(
                     "https://api.adzuna.com/v1/api/jobs/in/search/1",
