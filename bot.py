@@ -19,7 +19,10 @@ TG = f"https://api.telegram.org/bot{BOT_TOKEN}"
 DB = f"{SUPABASE_URL}/rest/v1/users"
 DB_HEADERS = {"apikey": SUPABASE_KEY, "Content-Type": "application/json"}
 DEFAULT_KEYWORDS = ["data analyst", "data analytics", "sql analyst",
-                    "software engineer", "software developer"]
+                    "business analyst", "software engineer",
+                    "software developer", "frontend developer",
+                    "backend developer", "full stack developer",
+                    "qa engineer"]
 DEFAULT_LOCATION = "bangalore"
 CACHE_SECONDS = 600
 _cache = {}
