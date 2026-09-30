@@ -152,7 +152,7 @@ def fetch_all_jobs(location):
     
     if JOOBLE_API_KEY:
         for kw in ["data analyst", "business analyst", "software engineer",
-                       "frontend developer", "qa engineer"]
+                       "frontend developer", "qa engineer"]:
             try:
                 r = requests.post(
                     f"https://jooble.org/api/{JOOBLE_API_KEY}",
