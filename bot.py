@@ -133,15 +133,26 @@ def get_cached_jobs(location):
 
 
 def fetch_jobs(keywords, locations):
-    jobs = []
     seen = set()
+    per_loc = []
     for loc in locations:
+        loc_matched = []
         for j in get_cached_jobs(loc):
-            key = j["text"]
-            if key not in seen:
-                seen.add(key)
-                jobs.append(j)
-    matched = [j for j in jobs if any(k in j["title"] for k in keywords)][:10]
+            if j["text"] in seen:
+                continue
+            if any(k in j["title"] for k in keywords):
+                seen.add(j["text"])
+                loc_matched.append(j)
+        per_loc.append(loc_matched)
+
+    matched, i = [], 0
+    while len(matched) < 10 and any(i < len(lst) for lst in per_loc):
+        for lst in per_loc:
+            if i < len(lst) and len(matched) < 10:
+                matched.append(lst[i])
+        i += 1
+
+    all_jobs = [j for lst in per_loc for j in lst]
     sections = []
     for b in BUCKET_ORDER:
         items = [j for j in matched if j["bucket"] == b]
@@ -150,7 +161,7 @@ def fetch_jobs(keywords, locations):
                              + "\n\n".join(j["text"] for j in items))
     if any(j.get("source") == "adzuna" for j in matched):
         sections.append('<a href="https://www.adzuna.in">Jobs by Adzuna</a>')
-    return sections, jobs
+    return sections, all_jobs
 
 
 HELP = ("<b>Commands</b>\n\n"
