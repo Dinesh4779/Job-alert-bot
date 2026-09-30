@@ -132,8 +132,15 @@ def get_cached_jobs(location):
     return entry["jobs"]
 
 
-def fetch_jobs(keywords, location):
-    jobs = get_cached_jobs(location)
+def fetch_jobs(keywords, locations):
+    jobs = []
+    seen = set()
+    for loc in locations:
+        for j in get_cached_jobs(loc):
+            key = j["text"]
+            if key not in seen:
+                seen.add(key)
+                jobs.append(j)
     matched = [j for j in jobs if any(k in j["title"] for k in keywords)][:10]
     sections = []
     for b in BUCKET_ORDER:
@@ -143,7 +150,7 @@ def fetch_jobs(keywords, location):
                              + "\n\n".join(j["text"] for j in items))
     if any(j.get("source") == "adzuna" for j in matched):
         sections.append('<a href="https://www.adzuna.in">Jobs by Adzuna</a>')
-    return sections
+    return sections, jobs
 
 
 HELP = ("<b>Commands</b>\n\n"
@@ -151,8 +158,9 @@ HELP = ("<b>Commands</b>\n\n"
         "🏷 /roles — view or set your job roles\n"
         "   e.g. /roles data analyst, sql\n"
         "   /roles clear — reset to defaults\n\n"
-        "📍 /location — view or set your job location\n"
-        "   e.g. /location mumbai\n\n"
+        "📍 /location — view or set your job locations (up to 3)\n"
+        "   e.g. /location bangalore, mumbai\n"
+        "   /location clear — reset to default\n\n"
         "💬 /suggest your idea — send feedback to the creator\n\n"
         "⏸ /stop — pause alerts\n"
         "▶️ /start — resume alerts")
@@ -190,12 +198,18 @@ def handle(chat_id, text):
     elif cmd == "/location":
         if not arg:
             user = db_get(chat_id)
-            loc = (user or {}).get("location") or DEFAULT_LOCATION
-            send(chat_id, f"Your location: {html.escape(loc)}\nChange it with /location mumbai")
+            locs = (user or {}).get("location") or DEFAULT_LOCATION
+            send(chat_id, f"Your locations: {html.escape(locs)}\nChange with /location bangalore, mumbai (up to 3)")
+        elif arg.lower() == "clear":
+            db_upsert(chat_id, location=DEFAULT_LOCATION)
+            send(chat_id, f"Location reset to default: {DEFAULT_LOCATION}")
         else:
-            loc = arg.strip().lower()[:40]
-            db_upsert(chat_id, location=loc)
-            send(chat_id, f"Location set to: {html.escape(loc)}")
+            locs = [l.strip().lower()[:40] for l in arg.split(",") if l.strip()][:3]
+            if not locs:
+                send(chat_id, "Add at least one location, e.g.\n/location bangalore, mumbai")
+            else:
+                db_upsert(chat_id, location=", ".join(locs))
+                send(chat_id, "Locations set to: " + html.escape(", ".join(locs)))
     elif cmd == "/suggest":
         if not arg:
             send(chat_id, "Add your suggestion after the command, e.g.\n/suggest add LinkedIn jobs")
@@ -206,11 +220,11 @@ def handle(chat_id, text):
     elif cmd == "/jobs":
         user = db_get(chat_id)
         kws = (user or {}).get("keywords") or DEFAULT_KEYWORDS
-        loc = (user or {}).get("location") or DEFAULT_LOCATION
-        sections = fetch_jobs(kws, loc)
+        locs = [l.strip() for l in ((user or {}).get("location") or DEFAULT_LOCATION).split(",") if l.strip()]
+        sections, jobs = fetch_jobs(kws, locs)
         if sections:
             send(chat_id, "Matching jobs:\n\n" + "\n\n".join(sections))
-        elif not get_cached_jobs(loc):
+        elif not jobs:
             send(chat_id, "Couldn't fetch jobs right now, the job sites may be temporarily unavailable. Try again in a few minutes.")
         else:
             send(chat_id, "No matching jobs right now. Try /roles with other titles.")
