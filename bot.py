@@ -229,11 +229,17 @@ def fetch_jobs(keywords, locations):
                 loc_matched.append(j)
         per_loc.append(loc_matched)
 
+    by_source = {}
+    for lst in per_loc:
+        for j in lst:
+            by_source.setdefault(j.get("source", "remoteok"), []).append(j)
+
     matched, i = [], 0
-    while len(matched) < 10 and any(i < len(lst) for lst in per_loc):
-        for lst in per_loc:
-            if i < len(lst) and len(matched) < 10:
-                matched.append(lst[i])
+    sources = list(by_source.keys())
+    while len(matched) < 10 and any(i < len(by_source[s]) for s in sources):
+        for s in sources:
+            if i < len(by_source[s]) and len(matched) < 10:
+                matched.append(by_source[s][i])
         i += 1
 
     all_jobs = [j for lst in per_loc for j in lst]
