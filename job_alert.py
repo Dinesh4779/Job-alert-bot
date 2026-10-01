@@ -275,6 +275,7 @@ def main():
         for loc in locs:
             per_loc.append(adzuna_cache[loc])
         jobs, i = [], 0
+        seen_text = set()
         while any(i < len(lst) for lst in per_loc):
             for lst in per_loc:
                 if i < len(lst):
