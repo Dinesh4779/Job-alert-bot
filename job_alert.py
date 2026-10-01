@@ -93,21 +93,29 @@ EXP_SINGLE = re.compile(
 BUCKET_ORDER = ["0-2 yrs experience", "2-4 yrs experience",
                 "4-6 yrs experience", "6+ yrs experience",
                 "Experience not specified"]
+EXP_LOOSE_RANGE = re.compile(r'(\d{1,2})\s*(?:-|–|to)\s*(\d{1,2})\s*\+?\s*(?:yrs?|years?)')
+EXP_LOOSE = re.compile(r'(\d{1,2})\s*\+?\s*(?:yrs?|years?)')
+FRESHER = re.compile(r'\b(fresher|freshers|entry[- ]level|trainee|intern(?:ship)?)\b')
 
 
 def experience_bucket(text):
     if not text:
         return BUCKET_ORDER[-1]
-    m = EXP_RANGE.search(text) or EXP_PLUS.search(text) or \
-        EXP_MIN.search(text) or EXP_SINGLE.search(text)
-    if not m:
+    text = text.lower()
+    m = (EXP_RANGE.search(text) or EXP_PLUS.search(text) or
+         EXP_MIN.search(text) or EXP_SINGLE.search(text) or
+         EXP_LOOSE_RANGE.search(text) or EXP_LOOSE.search(text))
+    if m:
+        lo = int(m.group(1))
+    elif FRESHER.search(text):
+        lo = 0
+    else:
         return BUCKET_ORDER[-1]
-    lo = int(m.group(1))
-    if lo <= 2:
+    if lo < 2:
         return BUCKET_ORDER[0]
-    if lo <= 4:
+    if lo < 4:
         return BUCKET_ORDER[1]
-    if lo <= 6:
+    if lo < 6:
         return BUCKET_ORDER[2]
     return BUCKET_ORDER[3]
 
