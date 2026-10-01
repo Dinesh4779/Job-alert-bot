@@ -3,6 +3,7 @@ import time
 import html
 import re
 import requests
+import hashlib
 from datetime import datetime, timedelta, timezone
 
 OWNER_CHAT_ID = os.environ.get("OWNER_CHAT_ID")
@@ -240,7 +241,7 @@ def fetch_jooble():
             company = j.get("company") or ""
             snippet = j.get("snippet") or ""
             jobs.append({
-                "id": f"jb_{location}_{hash(j.get('link',''))}",
+                "id": f"jb_{hashlib.md5(j.get('link', '').encode()).hexdigest()[:12]}",
                 "title": title.lower(),
                 "bucket": experience_bucket(f"{title} {snippet}"),
                 "text": f"<b>{html.escape(title)}</b>\n"
