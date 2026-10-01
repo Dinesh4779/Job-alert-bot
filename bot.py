@@ -3,6 +3,7 @@ import html
 import requests
 import time
 import re
+import traceback
 from datetime import datetime, timedelta, timezone
 from flask import Flask, request
 
@@ -323,10 +324,10 @@ def webhook():
         try:
             handle(chat["id"], msg["text"])
         except Exception as e:
-            print("error:", type(e).__name__)
+            traceback.print_exc()
             if OWNER_CHAT_ID:
                 try:
-                    send(OWNER_CHAT_ID, f"Bot error: {type(e).__name__} in handle()")
+                    send(OWNER_CHAT_ID, f"Bot error: {type(e).__name__}: {html.escape(str(e))[:300]}")
                 except Exception:
                     pass
     return "ok"
