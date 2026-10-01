@@ -5,6 +5,7 @@ import re
 import requests
 from datetime import datetime, timedelta, timezone
 
+OWNER_CHAT_ID = os.environ.get("OWNER_CHAT_ID")
 BOT_TOKEN = os.environ["BOT_TOKEN"]
 SUPABASE_URL = os.environ["SUPABASE_URL"].rstrip("/")
 SUPABASE_KEY = os.environ["SUPABASE_KEY"]
@@ -230,6 +231,11 @@ def fetch_jooble(location):
             print("jooble error:", type(e).__name__)
             continue
         print("jooble debug:", kw, location, r.status_code, r.text[:300])
+        if OWNER_CHAT_ID:
+            try:
+                send(OWNER_CHAT_ID, f"Jooble debug: {kw} {location} {r.status_code}\n{r.text[:300]}")
+            except Exception:
+                pass
         for j in r.json().get("jobs", []):
             title = j.get("title") or ""
             company = j.get("company") or ""
