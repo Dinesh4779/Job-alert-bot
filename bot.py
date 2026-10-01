@@ -134,8 +134,8 @@ def fetch_jooble():
             except Exception:
                 pass
         for j in r.json().get("jobs", []):
-        except requests.RequestException:
-            continue
+            except requests.RequestException:
+                continue
         for j in r.json().get("jobs", []):
             title = j.get("title") or ""
             company = j.get("company") or ""
