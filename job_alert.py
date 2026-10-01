@@ -230,7 +230,6 @@ def fetch_jooble(location):
         except requests.RequestException as e:
             print("jooble error:", type(e).__name__)
             continue
-        print("jooble debug:", kw, location, r.status_code, r.text[:300])
         if OWNER_CHAT_ID:
             try:
                 send(OWNER_CHAT_ID, f"Jooble debug: {kw} {location} {r.status_code}\n{r.text[:300]}")
