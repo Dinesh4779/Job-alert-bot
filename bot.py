@@ -121,18 +121,8 @@ def fetch_jooble():
                 json={"keywords": kw, "location": "India"},
                 timeout=20)
             r.raise_for_status()
-        except requests.RequestException as e:
-            if OWNER_CHAT_ID:
-                try:
-                    send(OWNER_CHAT_ID, f"Jooble bot.py error: {kw} {type(e).__name__}")
-                except Exception:
-                    pass
+        except requests.RequestException:
             continue
-        if OWNER_CHAT_ID:
-            try:
-                send(OWNER_CHAT_ID, f"Jooble bot.py debug: {kw} {r.status_code} count={len(r.json().get('jobs', []))}")
-            except Exception:
-                pass
         for j in r.json().get("jobs", []):
             title = j.get("title") or ""
             company = j.get("company") or ""
