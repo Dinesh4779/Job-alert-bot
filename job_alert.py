@@ -229,6 +229,7 @@ def fetch_jooble(location):
         except requests.RequestException as e:
             print("jooble error:", type(e).__name__)
             continue
+        print("jooble debug:", kw, location, r.status_code, r.text[:300])
         for j in r.json().get("jobs", []):
             title = j.get("title") or ""
             company = j.get("company") or ""
