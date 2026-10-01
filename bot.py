@@ -77,36 +77,39 @@ EXP_PLUS = re.compile(
 EXP_MIN = re.compile(
     r'(?:minimum|min\.?|at least)\s*(\d{1,2})\s*(?:yrs?|years?)'
     r'(?:\s+of)?\s*(?:relevant\s+)?experience', re.I)
+EXP_SINGLE_RANGE = re.compile(
+    r'experience\s*(?:of|:)?\s*(\d{1,2})\s*(?:-|to)\s*(\d{1,2})\s*'
+    r'(?:yrs?|years?)', re.I)
 EXP_SINGLE = re.compile(
     r'experience\s*(?:of|:)?\s*(\d{1,2})\s*(?:-|\+)?\s*(?:yrs?|years?)', re.I)
+CURRENCY_NEAR = re.compile(r'(₹|rs\.?|inr|lpa|lakh|lacs?|ctc|salary)', re.I)
 BUCKET_ORDER = ["0-2 yrs experience", "2-4 yrs experience",
                 "4-6 yrs experience", "6+ yrs experience",
                 "Experience not specified"]
-EXP_LOOSE_RANGE = re.compile(r'(\d{1,2})\s*(?:-|–|to)\s*(\d{1,2})\s*\+?\s*(?:yrs?|years?)')
-EXP_LOOSE = re.compile(r'(\d{1,2})\s*\+?\s*(?:yrs?|years?)')
-FRESHER = re.compile(r'\b(fresher|freshers|entry[- ]level|trainee|intern(?:ship)?)\b')
+
+
+def _bucket_for(lo):
+    if lo <= 2:
+        return BUCKET_ORDER[0]
+    if lo <= 4:
+        return BUCKET_ORDER[1]
+    if lo <= 6:
+        return BUCKET_ORDER[2]
+    return BUCKET_ORDER[3]
 
 
 def experience_bucket(text):
     if not text:
         return BUCKET_ORDER[-1]
-    text = text.lower()
-    m = (EXP_RANGE.search(text) or EXP_PLUS.search(text) or
-         EXP_MIN.search(text) or EXP_SINGLE.search(text) or
-         EXP_LOOSE_RANGE.search(text) or EXP_LOOSE.search(text))
-    if m:
-        lo = int(m.group(1))
-    elif FRESHER.search(text):
-        lo = 0
-    else:
-        return BUCKET_ORDER[-1]
-    if lo < 2:
-        return BUCKET_ORDER[0]
-    if lo < 4:
-        return BUCKET_ORDER[1]
-    if lo < 6:
-        return BUCKET_ORDER[2]
-    return BUCKET_ORDER[3]
+    window = text[:800]
+    for pattern in (EXP_RANGE, EXP_PLUS, EXP_MIN, EXP_SINGLE_RANGE, EXP_SINGLE):
+        for m in pattern.finditer(window):
+            start, end = m.span()
+            context = window[max(0, start - 20):end + 20]
+            if CURRENCY_NEAR.search(context):
+                continue
+            return _bucket_for(int(m.group(1)))
+    return BUCKET_ORDER[-1]
 
 
 def fetch_jooble():
