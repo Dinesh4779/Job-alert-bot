@@ -191,7 +191,8 @@ def get_cached_jobs(location):
     now = time.time()
     entry = _cache.get(location)
     if entry is None or now - entry["time"] > CACHE_SECONDS:
-        entry = {"jobs": fetch_all_jobs(location) + get_jooble_cached(), "time": now}
+        jobs = list(fetch_all_jobs(location)) + list(get_jooble_cached())
+        entry = {"jobs": jobs, "time": now}
         _cache[location] = entry
     return entry["jobs"]
 
