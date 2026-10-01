@@ -177,7 +177,7 @@ def fetch_all_jobs(location):
                     "source": "adzuna",
                     "text": f"<b>{html.escape(title)}</b>\n"
                             f"{html.escape(company)}\n{j.get('redirect_url', '')}"})
-
+            return jobs
 
 def get_jooble_cached():
     now = time.time()
@@ -192,7 +192,7 @@ def get_cached_jobs(location):
     now = time.time()
     entry = _cache.get(location)
     if entry is None or now - entry["time"] > CACHE_SECONDS:
-        jobs = list(fetch_all_jobs(location)) + list(get_jooble_cached())
+        jobs = list(fetch_all_jobs(location) or []) + list(get_jooble_cached() or [])
         entry = {"jobs": jobs, "time": now}
         _cache[location] = entry
     return entry["jobs"]
