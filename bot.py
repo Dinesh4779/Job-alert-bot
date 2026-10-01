@@ -100,6 +100,33 @@ def experience_bucket(text):
     return BUCKET_ORDER[3]
 
 
+def fetch_jooble():
+    if not JOOBLE_API_KEY:
+        return []
+    jobs = []
+    for kw in ["data analyst", "business analyst", "software engineer",
+               "frontend developer", "qa engineer"]:
+        try:
+            r = requests.post(
+                f"https://jooble.org/api/{JOOBLE_API_KEY}",
+                json={"keywords": kw, "location": "India"},
+                timeout=20)
+            r.raise_for_status()
+        except requests.RequestException:
+            continue
+        for j in r.json().get("jobs", []):
+            title = j.get("title") or ""
+            company = j.get("company") or ""
+            snippet = j.get("snippet") or ""
+            jobs.append({
+                "title": title.lower(),
+                "bucket": experience_bucket(f"{title} {snippet}"),
+                "source": "jooble",
+                "text": f"<b>{html.escape(title)}</b>\n"
+                        f"{html.escape(company)}\n{j.get('link', '')}"})
+    return jobs
+
+
 def fetch_all_jobs(location):
     jobs = []
     r = requests.get("https://remoteok.com/api",
@@ -149,36 +176,22 @@ def fetch_all_jobs(location):
                     "source": "adzuna",
                     "text": f"<b>{html.escape(title)}</b>\n"
                             f"{html.escape(company)}\n{j.get('redirect_url', '')}"})
-    
-    if JOOBLE_API_KEY:
-        for kw in ["data analyst", "business analyst", "software engineer",
-                       "frontend developer", "qa engineer"]:
-            try:
-                r = requests.post(
-                    f"https://jooble.org/api/{JOOBLE_API_KEY}",
-                    json={"keywords": kw, "location": location},
-                    timeout=20)
-                r.raise_for_status()
-            except requests.RequestException:
-                continue
-            for j in r.json().get("jobs", []):
-                title = j.get("title") or ""
-                company = j.get("company") or ""
-                snippet = j.get("snippet") or ""
-                jobs.append({
-                    "title": title.lower(),
-                    "bucket": experience_bucket(f"{title} {snippet}"),
-                    "source": "jooble",
-                    "text": f"<b>{html.escape(title)}</b>\n"
-                            f"{html.escape(company)}\n{j.get('link', '')}"})
-    return jobs
+
+
+def get_jooble_cached():
+    now = time.time()
+    entry = _cache.get("_jooble")
+    if entry is None or now - entry["time"] > CACHE_SECONDS:
+        entry = {"jobs": fetch_jooble(), "time": now}
+        _cache["_jooble"] = entry
+    return entry["jobs"]
 
 
 def get_cached_jobs(location):
     now = time.time()
     entry = _cache.get(location)
     if entry is None or now - entry["time"] > CACHE_SECONDS:
-        entry = {"jobs": fetch_all_jobs(location), "time": now}
+        entry = {"jobs": fetch_all_jobs(location) + get_jooble_cached(), "time": now}
         _cache[location] = entry
     return entry["jobs"]
 
