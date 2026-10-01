@@ -161,17 +161,17 @@ def get_adzuna_cached(location):
     return jobs
 
 
-def get_jooble_cached(location):
+def get_jooble_cached():
     now = datetime.now(timezone.utc)
     r = requests.get(JOOBLE_CACHE_URL, headers=H, timeout=15, params={
-        "location": f"eq.{location}", "select": "jobs,fetched_at"})
+        "location": "eq.india", "select": "jobs,fetched_at"})
     if r.ok and r.json():
         row = r.json()[0]
         fetched_at = datetime.fromisoformat(row["fetched_at"].replace("Z", "+00:00"))
         if now - fetched_at < timedelta(minutes=ADZUNA_CACHE_MINUTES):
             return row["jobs"]
-    jobs = fetch_jooble(location)
-    payload = {"location": location, "jobs": jobs,
+    jobs = fetch_jooble()
+    payload = {"location": "india", "jobs": jobs,
                "fetched_at": now.isoformat()}
     h = {**H, "Prefer": "resolution=merge-duplicates,return=minimal"}
     try:
@@ -215,7 +215,7 @@ def fetch_adzuna(location):
     return jobs
 
 
-def fetch_jooble(location):
+def fetch_jooble():
     if not JOOBLE_API_KEY:
         return []
     jobs = []
@@ -224,7 +224,7 @@ def fetch_jooble(location):
         try:
             r = requests.post(
                 f"https://jooble.org/api/{JOOBLE_API_KEY}",
-                json={"keywords": kw, "location": location},
+                json={"keywords": kw, "location": "India"},
                 timeout=20)
             r.raise_for_status()
         except requests.RequestException as e:
@@ -266,11 +266,12 @@ def main():
         cid = u["chat_id"]
         kws = u.get("keywords") or DEFAULT_KEYWORDS
         locs = [normalize_location(l) for l in (u.get("location") or DEFAULT_LOCATION).split(",") if l.strip()]
+        if "_jooble" not in adzuna_cache:
+            adzuna_cache["_jooble"] = get_jooble_cached()
         for loc in locs:
             if loc not in adzuna_cache:
-                adzuna_cache[loc] = get_adzuna_cached(loc) + get_jooble_cached(loc)
-        seen_text = set()
-        per_loc = [base_jobs]
+                adzuna_cache[loc] = get_adzuna_cached(loc)
+        per_loc = [base_jobs, adzuna_cache["_jooble"]]
         for loc in locs:
             per_loc.append(adzuna_cache[loc])
         jobs, i = [], 0
