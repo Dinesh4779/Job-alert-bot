@@ -147,6 +147,66 @@ def fetch_jooble():
     return jobs
 
 
+def fetch_jobicy():
+    jobs = []
+    cutoff = datetime.now(timezone.utc) - timedelta(days=14)
+    try:
+        r = requests.get("https://jobicy.com/api/v2/remote-jobs",
+                         params={"count": 50}, timeout=20)
+        r.raise_for_status()
+    except requests.RequestException:
+        return []
+    for j in r.json().get("jobs", []):
+        posted = j.get("pubDate") or ""
+        try:
+            posted_dt = datetime.fromisoformat(posted.replace("Z", "+00:00"))
+            if posted_dt < cutoff:
+                continue
+        except ValueError:
+            pass
+        title = j.get("jobTitle") or ""
+        company = j.get("companyName") or ""
+        excerpt = j.get("jobExcerpt") or ""
+        jobs.append({
+            "id": f"jc_{hash(j.get('url', ''))}",
+            "title": title.lower(),
+            "bucket": experience_bucket(f"{title} {excerpt}"),
+            "source": "jobicy",
+            "text": f"<b>{html.escape(title)}</b>\n"
+                    f"{html.escape(company)}\n{j.get('url', '')}"})
+    return jobs
+
+
+def fetch_remotive():
+    jobs = []
+    cutoff = datetime.now(timezone.utc) - timedelta(days=14)
+    try:
+        r = requests.get("https://remotive.com/api/remote-jobs",
+                         params={"limit": 50}, timeout=20)
+        r.raise_for_status()
+    except requests.RequestException:
+        return []
+    for j in r.json().get("jobs", []):
+        posted = j.get("publication_date") or ""
+        try:
+            posted_dt = datetime.fromisoformat(posted.replace("Z", "+00:00"))
+            if posted_dt < cutoff:
+                continue
+        except ValueError:
+            pass
+        title = j.get("title") or ""
+        company = j.get("company_name") or ""
+        desc = re.sub(r"<[^>]+>", " ", j.get("description") or "")
+        jobs.append({
+            "id": f"rm_{hash(j.get('url', ''))}",
+            "title": title.lower(),
+            "bucket": experience_bucket(f"{title} {desc}"),
+            "source": "remotive",
+            "text": f"<b>{html.escape(title)}</b>\n"
+                    f"{html.escape(company)}\n{j.get('url', '')}"})
+    return jobs
+
+
 def fetch_all_jobs(location):
     jobs = []
     r = requests.get("https://remoteok.com/api",
@@ -208,11 +268,29 @@ def get_jooble_cached():
     return entry["jobs"]
 
 
+def get_jobicy_cached():
+    now = time.time()
+    entry = _cache.get("_jobicy")
+    if entry is None or now - entry["time"] > CACHE_SECONDS:
+        entry = {"jobs": fetch_jobicy(), "time": now}
+        _cache["_jobicy"] = entry
+    return entry["jobs"]
+
+
+def get_remotive_cached():
+    now = time.time()
+    entry = _cache.get("_remotive")
+    if entry is None or now - entry["time"] > CACHE_SECONDS:
+        entry = {"jobs": fetch_remotive(), "time": now}
+        _cache["_remotive"] = entry
+    return entry["jobs"]
+
+
 def get_cached_jobs(location):
     now = time.time()
     entry = _cache.get(location)
     if entry is None or now - entry["time"] > CACHE_SECONDS:
-        jobs = list(fetch_all_jobs(location) or []) + list(get_jooble_cached() or [])
+        jobs = list(fetch_all_jobs(location) or []) + list(get_jooble_cached() or []) + list(get_jobicy_cached() or []) + list(get_remotive_cached() or [])
         entry = {"jobs": jobs, "time": now}
         _cache[location] = entry
     return entry["jobs"]
