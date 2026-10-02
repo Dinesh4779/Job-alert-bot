@@ -101,6 +101,17 @@ BUCKET_ORDER = ["0-2 yrs experience", "2-4 yrs experience",
                 "Experience not specified"]
 
 
+LEVEL_HINTS = [
+    (re.compile(r'\b(senior|sr|lead|principal|staff|manager|head|director)\b', re.I), 3),
+    (re.compile(r'\b(intern|internship|fresher|entry[- ]level|graduate|trainee|junior|jr)\b', re.I), 0),
+    (re.compile(r'\b(associate|mid[- ]level|midweight|intermediate)\b', re.I), 1),
+]
+
+EXP_YEARS = re.compile(
+    r'(\d{1,2})\s*(?:yrs?|years?)(?:\s+of)?\s*(?:relevant\s+|work\s+|professional\s+)?experience',
+    re.I)
+
+
 def _bucket_for(lo):
     if lo <= 2:
         return BUCKET_ORDER[0]
@@ -114,7 +125,7 @@ def _bucket_for(lo):
 def experience_bucket(text):
     if not text:
         return BUCKET_ORDER[-1]
-    window = text[:800]
+    window = text[:5000]
     for pattern in (EXP_RANGE, EXP_PLUS, EXP_MIN, EXP_SINGLE_RANGE, EXP_SINGLE):
         for m in pattern.finditer(window):
             start, end = m.span()
@@ -122,6 +133,14 @@ def experience_bucket(text):
             if CURRENCY_NEAR.search(context):
                 continue
             return _bucket_for(int(m.group(1)))
+    for m in EXP_YEARS.finditer(window):
+        context = window[max(0, m.start() - 20):m.end() + 20]
+        if CURRENCY_NEAR.search(context):
+            continue
+        return _bucket_for(int(m.group(1)))
+    for pattern, idx in LEVEL_HINTS:
+        if pattern.search(window):
+            return BUCKET_ORDER[idx]
     return BUCKET_ORDER[-1]
 
 
@@ -316,9 +335,10 @@ def fetch_jobicy():
         r = requests.get("https://jobicy.com/api/v2/remote-jobs",
                          params={"count": 50}, timeout=20)
         r.raise_for_status()
-    except requests.RequestException:
-        return []
-    for j in r.json().get("jobs", []):
+        data = r.json().get("jobs", [])
+        except (requests.RequestException, ValueError):
+            return []
+    for j in data:
         posted = j.get("pubDate") or ""
         try:
             posted_dt = datetime.fromisoformat(posted.replace("Z", "+00:00"))
@@ -332,7 +352,7 @@ def fetch_jobicy():
         jobs.append({
             "id": f"jc_{hash(j.get('url', ''))}",
             "title": title.lower(),
-            "bucket": experience_bucket(f"{title} {excerpt}"),
+            "bucket": experience_bucket(f"{title} {excerpt} {j.get('jobLevel', '')}"),
             "source": "jobicy",
             "text": f"<b>{html.escape(title)}</b>\n"
                     f"{html.escape(company)}\n{j.get('url', '')}"})
@@ -346,9 +366,10 @@ def fetch_remotive():
         r = requests.get("https://remotive.com/api/remote-jobs",
                          params={"limit": 50}, timeout=20)
         r.raise_for_status()
-    except requests.RequestException:
-        return []
-    for j in r.json().get("jobs", []):
+        data = r.json().get("jobs", [])
+        except (requests.RequestException, ValueError):
+            return []
+    for j in data:
         posted = j.get("publication_date") or ""
         try:
             posted_dt = datetime.fromisoformat(posted.replace("Z", "+00:00"))
