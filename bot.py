@@ -199,6 +199,8 @@ def fetch_remotive():
         posted = j.get("publication_date") or ""
         try:
             posted_dt = datetime.fromisoformat(posted.replace("Z", "+00:00"))
+            if posted_dt.tzinfo is None:
+                posted_dt = posted_dt.replace(tzinfo=timezone.utc)
             if posted_dt < cutoff:
                 continue
         except ValueError:
