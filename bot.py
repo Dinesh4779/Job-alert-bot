@@ -185,8 +185,8 @@ def fetch_jobicy():
                          params={"count": 50}, timeout=20)
         r.raise_for_status()
         data = r.json().get("jobs", [])
-        except (requests.RequestException, ValueError):
-            return []
+    except (requests.RequestException, ValueError):
+        return []
     for j in data:
         posted = j.get("pubDate") or ""
         try:
@@ -216,8 +216,8 @@ def fetch_remotive():
                          params={"limit": 50}, timeout=20)
         r.raise_for_status()
         data = r.json().get("jobs", [])
-        except (requests.RequestException, ValueError):
-            return []
+    except (requests.RequestException, ValueError):
+        return []
     for j in data:
         posted = j.get("publication_date") or ""
         try:
