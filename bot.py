@@ -108,6 +108,13 @@ def _bucket_for(lo):
     return BUCKET_ORDER[3]
 
 
+LEVEL_HINTS = [
+    (re.compile(r'\b(senior|sr|lead|principal|staff|manager|head|director)\b', re.I), 3),
+    (re.compile(r'\b(intern|internship|fresher|entry[- ]level|graduate|trainee|junior|jr)\b', re.I), 0),
+    (re.compile(r'\b(associate|mid[- ]level|midweight|intermediate)\b', re.I), 1),
+]
+
+
 def experience_bucket(text):
     if not text:
         return BUCKET_ORDER[-1]
@@ -119,6 +126,9 @@ def experience_bucket(text):
             if CURRENCY_NEAR.search(context):
                 continue
             return _bucket_for(int(m.group(1)))
+    for pattern, idx in LEVEL_HINTS:
+        if pattern.search(window):
+            return BUCKET_ORDER[idx]
     return BUCKET_ORDER[-1]
 
 
@@ -181,7 +191,7 @@ def fetch_jobicy():
         jobs.append({
             "id": f"jc_{hash(j.get('url', ''))}",
             "title": title.lower(),
-            "bucket": experience_bucket(f"{title} {excerpt}"),
+            "bucket": experience_bucket(f"{title} {excerpt} {j.get('jobLevel', '')}"),
             "source": "jobicy",
             "text": f"<b>{html.escape(title)}</b>\n"
                     f"{html.escape(company)}\n{j.get('url', '')}"})
