@@ -352,6 +352,8 @@ def fetch_remotive():
         posted = j.get("publication_date") or ""
         try:
             posted_dt = datetime.fromisoformat(posted.replace("Z", "+00:00"))
+            if posted_dt.tzinfo is None:
+                posted_dt = posted_dt.replace(tzinfo=timezone.utc)
             if posted_dt < cutoff:
                 continue
         except ValueError:
@@ -360,7 +362,7 @@ def fetch_remotive():
         company = j.get("company_name") or ""
         desc = re.sub(r"<[^>]+>", " ", j.get("description") or "")
         jobs.append({
-            "id": f"rm_{hash(j.get('url', ''))}",
+            "id": f"rm_{hashlib.md5(j.get('url', '').encode()).hexdigest()[:12]}",
             "title": title.lower(),
             "bucket": experience_bucket(f"{title} {desc}"),
             "source": "remotive",
