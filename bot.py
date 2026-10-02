@@ -126,7 +126,15 @@ def fetch_jooble():
             r.raise_for_status()
         except requests.RequestException:
             continue
+        cutoff = datetime.now(timezone.utc) - timedelta(days=14)
         for j in r.json().get("jobs", []):
+            updated = j.get("updated") or ""
+            try:
+                updated_dt = datetime.fromisoformat(updated[:19]).replace(tzinfo=timezone.utc)
+                if updated_dt < cutoff:
+                    continue
+            except ValueError:
+                pass
             title = j.get("title") or ""
             company = j.get("company") or ""
             snippet = j.get("snippet") or ""
@@ -143,7 +151,7 @@ def fetch_all_jobs(location):
     jobs = []
     r = requests.get("https://remoteok.com/api",
                      headers={"User-Agent": "Mozilla/5.0"}, timeout=20)
-    cutoff = datetime.now(timezone.utc) - timedelta(days=21)
+    cutoff = datetime.now(timezone.utc) - timedelta(days=14)
     recent = []
     for j in r.json()[1:]:
         posted = j.get("date") or ""
@@ -173,7 +181,8 @@ def fetch_all_jobs(location):
                     "https://api.adzuna.com/v1/api/jobs/in/search/1",
                     params={"app_id": ADZUNA_APP_ID, "app_key": ADZUNA_APP_KEY,
                             "results_per_page": 15, "what": kw,
-                            "where": location, "content-type": "application/json"},
+                            "where": location, "max_days_old": 14,
+                            "content-type": "application/json"},
                     timeout=20)
                 r.raise_for_status()
             except requests.RequestException:
