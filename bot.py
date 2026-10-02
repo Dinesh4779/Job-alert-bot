@@ -4,6 +4,7 @@ import requests
 import time
 import re
 import traceback
+import hashlib
 from datetime import datetime, timedelta, timezone
 from flask import Flask, request
 
@@ -191,10 +192,12 @@ def fetch_remotive():
     cutoff = datetime.now(timezone.utc) - timedelta(days=14)
     try:
         r = requests.get("https://remotive.com/api/remote-jobs",
-                         params={"limit": 50}, timeout=20)
+                         params={"limit": 200}, timeout=20)
         r.raise_for_status()
-    except requests.RequestException:
+    except requests.RequestException as e:
+        print("remotive error:", type(e).__name__, getattr(getattr(e, "response", None), "status_code", None))
         return []
+    print("remotive fetched:", len(r.json().get("jobs", [])))
     for j in r.json().get("jobs", []):
         posted = j.get("publication_date") or ""
         try:
@@ -209,12 +212,13 @@ def fetch_remotive():
         company = j.get("company_name") or ""
         desc = re.sub(r"<[^>]+>", " ", j.get("description") or "")
         jobs.append({
-            "id": f"rm_{hash(j.get('url', ''))}",
+            "id": hashlib.md5(j.get('url', '').encode()).hexdigest()[:12],
             "title": title.lower(),
             "bucket": experience_bucket(f"{title} {desc}"),
             "source": "remotive",
             "text": f"<b>{html.escape(title)}</b>\n"
                     f"{html.escape(company)}\n{j.get('url', '')}"})
+    print("remotive kept after cutoff:", len(jobs))
     return jobs
 
 
