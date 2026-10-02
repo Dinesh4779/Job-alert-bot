@@ -7,6 +7,15 @@ import traceback
 from datetime import datetime, timedelta, timezone
 from flask import Flask, request
 
+def parse_dt(s):
+    try:
+        dt = datetime.fromisoformat((s or "").replace("Z", "+00:00"))
+    except ValueError:
+        return None
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    return dt
+
 BOT_TOKEN = os.environ["BOT_TOKEN"]
 SUPABASE_URL = os.environ["SUPABASE_URL"].rstrip("/")
 SUPABASE_KEY = os.environ["SUPABASE_KEY"]
