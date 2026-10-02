@@ -14,6 +14,8 @@ ADZUNA_APP_ID = os.environ.get("ADZUNA_APP_ID")
 ADZUNA_APP_KEY = os.environ.get("ADZUNA_APP_KEY")
 JOOBLE_API_KEY = os.environ.get("JOOBLE_API_KEY")
 JOOBLE_CACHE_URL = f"{SUPABASE_URL}/rest/v1/jooble_cache"
+JOBICY_CACHE_URL = f"{SUPABASE_URL}/rest/v1/jobicy_cache"
+REMOTIVE_CACHE_URL = f"{SUPABASE_URL}/rest/v1/remotive_cache"
 
 TG = f"https://api.telegram.org/bot{BOT_TOKEN}"
 USERS = f"{SUPABASE_URL}/rest/v1/users"
@@ -193,6 +195,44 @@ def get_jooble_cached():
     return jobs
 
 
+def get_jobicy_cached():
+    now = datetime.now(timezone.utc)
+    r = requests.get(JOBICY_CACHE_URL, headers=H, timeout=15, params={
+        "location": "eq.global", "select": "jobs,fetched_at"})
+    if r.ok and r.json():
+        row = r.json()[0]
+        fetched_at = datetime.fromisoformat(row["fetched_at"].replace("Z", "+00:00"))
+        if now - fetched_at < timedelta(minutes=ADZUNA_CACHE_MINUTES):
+            return row["jobs"]
+    jobs = fetch_jobicy()
+    payload = {"location": "global", "jobs": jobs, "fetched_at": now.isoformat()}
+    h = {**H, "Prefer": "resolution=merge-duplicates,return=minimal"}
+    try:
+        requests.post(JOBICY_CACHE_URL, headers=h, json=payload, timeout=15)
+    except requests.RequestException:
+        pass
+    return jobs
+
+
+def get_remotive_cached():
+    now = datetime.now(timezone.utc)
+    r = requests.get(REMOTIVE_CACHE_URL, headers=H, timeout=15, params={
+        "location": "eq.global", "select": "jobs,fetched_at"})
+    if r.ok and r.json():
+        row = r.json()[0]
+        fetched_at = datetime.fromisoformat(row["fetched_at"].replace("Z", "+00:00"))
+        if now - fetched_at < timedelta(minutes=ADZUNA_CACHE_MINUTES):
+            return row["jobs"]
+    jobs = fetch_remotive()
+    payload = {"location": "global", "jobs": jobs, "fetched_at": now.isoformat()}
+    h = {**H, "Prefer": "resolution=merge-duplicates,return=minimal"}
+    try:
+        requests.post(REMOTIVE_CACHE_URL, headers=h, json=payload, timeout=15)
+    except requests.RequestException:
+        pass
+    return jobs
+
+
 def fetch_adzuna(location):
     if not (ADZUNA_APP_ID and ADZUNA_APP_KEY):
         return []
@@ -269,6 +309,66 @@ def fetch_jooble():
     return jobs
 
 
+def fetch_jobicy():
+    jobs = []
+    cutoff = datetime.now(timezone.utc) - timedelta(days=14)
+    try:
+        r = requests.get("https://jobicy.com/api/v2/remote-jobs",
+                         params={"count": 50}, timeout=20)
+        r.raise_for_status()
+    except requests.RequestException:
+        return []
+    for j in r.json().get("jobs", []):
+        posted = j.get("pubDate") or ""
+        try:
+            posted_dt = datetime.fromisoformat(posted.replace("Z", "+00:00"))
+            if posted_dt < cutoff:
+                continue
+        except ValueError:
+            pass
+        title = j.get("jobTitle") or ""
+        company = j.get("companyName") or ""
+        excerpt = j.get("jobExcerpt") or ""
+        jobs.append({
+            "id": f"jc_{hash(j.get('url', ''))}",
+            "title": title.lower(),
+            "bucket": experience_bucket(f"{title} {excerpt}"),
+            "source": "jobicy",
+            "text": f"<b>{html.escape(title)}</b>\n"
+                    f"{html.escape(company)}\n{j.get('url', '')}"})
+    return jobs
+
+
+def fetch_remotive():
+    jobs = []
+    cutoff = datetime.now(timezone.utc) - timedelta(days=14)
+    try:
+        r = requests.get("https://remotive.com/api/remote-jobs",
+                         params={"limit": 50}, timeout=20)
+        r.raise_for_status()
+    except requests.RequestException:
+        return []
+    for j in r.json().get("jobs", []):
+        posted = j.get("publication_date") or ""
+        try:
+            posted_dt = datetime.fromisoformat(posted.replace("Z", "+00:00"))
+            if posted_dt < cutoff:
+                continue
+        except ValueError:
+            pass
+        title = j.get("title") or ""
+        company = j.get("company_name") or ""
+        desc = re.sub(r"<[^>]+>", " ", j.get("description") or "")
+        jobs.append({
+            "id": f"rm_{hash(j.get('url', ''))}",
+            "title": title.lower(),
+            "bucket": experience_bucket(f"{title} {desc}"),
+            "source": "remotive",
+            "text": f"<b>{html.escape(title)}</b>\n"
+                    f"{html.escape(company)}\n{j.get('url', '')}"})
+    return jobs
+
+
 def send(chat_id, text):
     r = requests.post(f"{TG}/sendMessage", timeout=20, json={
         "chat_id": chat_id, "text": text, "parse_mode": "HTML",
@@ -289,10 +389,15 @@ def main():
         locs = [normalize_location(l) for l in (u.get("location") or DEFAULT_LOCATION).split(",") if l.strip()]
         if "_jooble" not in adzuna_cache:
             adzuna_cache["_jooble"] = get_jooble_cached()
+        if "_jobicy" not in adzuna_cache:
+            adzuna_cache["_jobicy"] = get_jobicy_cached()
+        if "_remotive" not in adzuna_cache:
+            adzuna_cache["_remotive"] = get_remotive_cached()
         for loc in locs:
             if loc not in adzuna_cache:
                 adzuna_cache[loc] = get_adzuna_cached(loc)
-        per_loc = [base_jobs, adzuna_cache["_jooble"]]
+        per_loc = [base_jobs, adzuna_cache["_jooble"],
+                   adzuna_cache["_jobicy"], adzuna_cache["_remotive"]]
         for loc in locs:
             per_loc.append(adzuna_cache[loc])
         jobs, i = [], 0
