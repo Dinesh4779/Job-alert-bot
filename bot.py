@@ -115,10 +115,15 @@ LEVEL_HINTS = [
 ]
 
 
+EXP_YEARS = re.compile(
+    r'(\d{1,2})\s*(?:yrs?|years?)(?:\s+of)?\s*(?:relevant\s+|work\s+|professional\s+)?experience',
+    re.I)
+
+
 def experience_bucket(text):
     if not text:
         return BUCKET_ORDER[-1]
-    window = text[:800]
+    window = text[:5000]
     for pattern in (EXP_RANGE, EXP_PLUS, EXP_MIN, EXP_SINGLE_RANGE, EXP_SINGLE):
         for m in pattern.finditer(window):
             start, end = m.span()
@@ -126,6 +131,11 @@ def experience_bucket(text):
             if CURRENCY_NEAR.search(context):
                 continue
             return _bucket_for(int(m.group(1)))
+    for m in EXP_YEARS.finditer(window):
+        context = window[max(0, m.start() - 20):m.end() + 20]
+        if CURRENCY_NEAR.search(context):
+            continue
+        return _bucket_for(int(m.group(1)))
     for pattern, idx in LEVEL_HINTS:
         if pattern.search(window):
             return BUCKET_ORDER[idx]
