@@ -194,10 +194,8 @@ def fetch_remotive():
         r = requests.get("https://remotive.com/api/remote-jobs",
                          params={"limit": 200}, timeout=20)
         r.raise_for_status()
-    except requests.RequestException as e:
-        print("remotive error:", type(e).__name__, getattr(getattr(e, "response", None), "status_code", None))
+    except requests.RequestException:
         return []
-    print("remotive fetched:", len(r.json().get("jobs", [])))
     for j in r.json().get("jobs", []):
         posted = j.get("publication_date") or ""
         try:
@@ -218,7 +216,6 @@ def fetch_remotive():
             "source": "remotive",
             "text": f"<b>{html.escape(title)}</b>\n"
                     f"{html.escape(company)}\n{j.get('url', '')}"})
-    print("remotive kept after cutoff:", len(jobs))
     return jobs
 
 
