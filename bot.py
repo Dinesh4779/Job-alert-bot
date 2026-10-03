@@ -50,7 +50,7 @@ LOCATION_ALIASES = {
 BASE_ROLES = ["data analyst", "business analyst", "software engineer",
               "software developer", "frontend developer", "backend developer",
               "full stack developer", "qa engineer"]
-SEARCH_TERMS = [f"{r} fresher" for r in BASE_ROLES]
+SEARCH_TERMS = BASE_ROLES + [f"{r} fresher" for r in BASE_ROLES[:4]]
 
 
 def normalize_location(loc):
