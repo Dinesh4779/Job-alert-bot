@@ -283,7 +283,8 @@ def fetch_all_jobs(location):
                             "content-type": "application/json"},
                     timeout=20)
                 r.raise_for_status()
-            except requests.RequestException:
+            except requests.RequestException as e:
+                print("adzuna error:", kw, type(e).__name__, getattr(e.response, "status_code", ""))
                 continue
             for j in r.json().get("results", []):
                 title = j.get("title") or ""
