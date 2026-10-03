@@ -297,7 +297,7 @@ def fetch_all_jobs(location):
                     "source": "adzuna",
                     "text": f"<b>{html.escape(title)}</b>\n"
                             f"{html.escape(company)}\n{j.get('redirect_url', '')}"})
-            return jobs
+        return jobs
 
 def get_jooble_cached():
     now = time.time()
