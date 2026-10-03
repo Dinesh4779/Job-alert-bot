@@ -47,6 +47,14 @@ LOCATION_ALIASES = {
 }
 
 
+BASE_ROLES = ["data analyst", "business analyst", "software engineer",
+              "software developer", "frontend developer", "backend developer",
+              "full stack developer", "qa engineer"]
+SEARCH_TERMS = (BASE_ROLES
+                + [f"{r} fresher" for r in BASE_ROLES]
+                + [f"junior {r}" for r in BASE_ROLES])
+
+
 def normalize_location(loc):
     key = loc.strip().lower()
     return LOCATION_ALIASES.get(key, key)
@@ -146,8 +154,7 @@ def fetch_jooble():
     if not JOOBLE_API_KEY:
         return []
     jobs = []
-    for kw in ["data analyst", "business analyst", "software engineer",
-               "frontend developer", "qa engineer"]:
+    for kw in SEARCH_TERMS:
         try:
             r = requests.post(
                 f"https://jooble.org/api/{JOOBLE_API_KEY}",
@@ -268,8 +275,7 @@ def fetch_all_jobs(location):
     jobs += recent
 
     if ADZUNA_APP_ID and ADZUNA_APP_KEY:
-        for kw in ["data analyst", "business analyst", "software engineer",
-                       "frontend developer", "qa engineer"]:
+        for kw in SEARCH_TERMS:
             try:
                 r = requests.get(
                     "https://api.adzuna.com/v1/api/jobs/in/search/1",
