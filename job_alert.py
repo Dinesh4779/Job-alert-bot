@@ -409,7 +409,10 @@ def send(chat_id, text):
 
 def main():
     users = get_users()
-    base_jobs = fetch_remoteok()
+    try:
+        base_jobs = fetch_remoteok()
+    except (requests.RequestException, ValueError):
+        base_jobs = []
     adzuna_cache = {}
     delivered = 0
     for u in users:
