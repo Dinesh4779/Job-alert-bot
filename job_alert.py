@@ -398,6 +398,55 @@ def fetch_remotive():
     return jobs
 
 
+_scraped_cache = {}
+
+
+def fetch_scraped_jobs(location_key):
+    base = os.environ.get("SUPABASE_URL")
+    api_key = os.environ.get("SUPABASE_KEY")
+    if not base or not api_key:
+        return []
+    try:
+        r = requests.get(
+            f"{base}/rest/v1/scraped_jobs",
+            headers={"apikey": api_key, "Authorization": f"Bearer {api_key}"},
+            params={"search_location": f"eq.{location_key}",
+                    "order": "posted.desc.nullslast", "limit": "150"},
+            timeout=15)
+        r.raise_for_status()
+        rows = r.json()
+    except (requests.RequestException, ValueError):
+        return []
+    jobs = []
+    for row in rows:
+        title = row.get("title") or ""
+        company = row.get("company") or ""
+        url = row.get("url") or ""
+        exp_min = row.get("exp_min")
+        if exp_min is None:
+            bucket = experience_bucket(title)
+        else:
+            bucket = _bucket_for(int(exp_min))
+        jobs.append({
+            "id": row["id"],
+            "title": title.lower(),
+            "bucket": bucket,
+            "source": "scraped",
+            "text": f"<b>{html.escape(title)}</b>\n{html.escape(company)}\n{url}",
+        })
+    return jobs
+
+
+def get_scraped_cached(location):
+    now = time.time()
+    key = (location or "").strip().lower()
+    entry = _scraped_cache.get(key)
+    if entry is None or now - entry["time"] > 600:
+        entry = {"jobs": fetch_scraped_jobs(key), "time": now}
+        _scraped_cache[key] = entry
+    return entry["jobs"]
+
+
 def send(chat_id, text):
     r = requests.post(f"{TG}/sendMessage", timeout=20, json={
         "chat_id": chat_id, "text": text, "parse_mode": "HTML",
@@ -430,6 +479,7 @@ def main():
            adzuna_cache["_remotive"]]
         for loc in locs:
             per_loc.append(adzuna_cache[loc])
+            per_loc.append(get_scraped_cached(loc))
         jobs, i = [], 0
         seen_text = set()
         while any(i < len(lst) for lst in per_loc):
