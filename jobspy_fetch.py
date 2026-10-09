@@ -21,7 +21,7 @@ LOCATIONS = {"bangalore": "Bengaluru"}   # bot location key -> city to search
 SITES = ["linkedin", "indeed", "naukri"]
 RESULTS_PER_SEARCH = 30
 MAX_AGE_HOURS = 336      # 14 days
-MAX_EXP_YEARS = 2        # drop jobs that clearly ask for more than this
+MAX_EXP_YEARS = 1        # drop jobs that clearly ask for more than this
 PAUSE_SECONDS = 6        # wait between searches (helps avoid blocks)
 # ---------------------------------------------------------
 
