@@ -135,7 +135,7 @@ def main():
                         site_name=[site], search_term=role, location=city,
                         results_wanted=RESULTS_PER_SEARCH,
                         hours_old=MAX_AGE_HOURS, country_indeed="India",
-                        linkedin_fetch_description=(site == "linkedin"),
+                        fetch_description=(site == "linkedin"),
                         verbose=0)
                 except Exception as e:
                     stats["failed"] += 1
