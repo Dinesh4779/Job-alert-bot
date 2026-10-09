@@ -411,7 +411,8 @@ def fetch_scraped_jobs(location_key):
             f"{base}/rest/v1/scraped_jobs",
             headers={"apikey": api_key, "Authorization": f"Bearer {api_key}"},
             params={"search_location": f"eq.{location_key}",
-                    "order": "exp_min.asc.nullslast,posted.desc.nullslast", "limit": "150"},
+                    "order": "exp_min.asc.nullslast,posted.desc.nullslast",
+                    "limit": "150"},
             timeout=15)
         r.raise_for_status()
         rows = r.json()
@@ -427,9 +428,13 @@ def fetch_scraped_jobs(location_key):
             bucket = experience_bucket(title)
         else:
             bucket = _bucket_for(int(exp_min))
+        match_title = title.lower()
+        role = row.get("role") or ""
+        if role and any(w in match_title for w in role.split() if len(w) > 2):
+            match_title += " " + role
         jobs.append({
             "id": row["id"],
-            "title": title.lower(),
+            "title": match_title,
             "bucket": bucket,
             "source": "scraped",
             "text": f"<b>{html.escape(title)}</b>\n{html.escape(company)}\n{url}",
