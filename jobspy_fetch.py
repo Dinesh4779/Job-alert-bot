@@ -21,7 +21,7 @@ ROLES = ["data analyst", "business analyst", "software developer",
          "backend developer", "full stack developer"]
 # bot location key -> city name to search (keys must match your bot's city names)
 LOCATIONS = {"bangalore": "Bengaluru", "hyderabad": "Hyderabad",
-             "pune": "Pune"}
+             "mumbai": "Mumbai"}
 SITES = ["linkedin", "indeed", "naukri"]
 RESULTS_PER_SEARCH = 30
 MAX_AGE_HOURS = 336      # 14 days
