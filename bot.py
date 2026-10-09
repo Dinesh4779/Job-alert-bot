@@ -338,7 +338,7 @@ def fetch_scraped_jobs(location_key):
             f"{base}/rest/v1/scraped_jobs",
             headers={"apikey": api_key, "Authorization": f"Bearer {api_key}"},
             params={"search_location": f"eq.{location_key}",
-                    "order": "posted.desc.nullslast", "limit": "150"},
+                    "order": "exp_min.asc.nullslast,posted.desc.nullslast", "limit": "150"},
             timeout=15)
         r.raise_for_status()
         rows = r.json()
