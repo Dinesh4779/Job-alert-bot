@@ -418,15 +418,13 @@ def main():
         locs = [normalize_location(l) for l in (u.get("location") or DEFAULT_LOCATION).split(",") if l.strip()]
         if "_jooble" not in adzuna_cache:
             adzuna_cache["_jooble"] = get_jooble_cached()
-        if "_jobicy" not in adzuna_cache:
-            adzuna_cache["_jobicy"] = get_jobicy_cached()
         if "_remotive" not in adzuna_cache:
             adzuna_cache["_remotive"] = get_remotive_cached()
         for loc in locs:
             if loc not in adzuna_cache:
                 adzuna_cache[loc] = get_adzuna_cached(loc)
         per_loc = [base_jobs, adzuna_cache["_jooble"],
-                   adzuna_cache["_jobicy"], adzuna_cache["_remotive"]]
+           adzuna_cache["_remotive"]]
         for loc in locs:
             per_loc.append(adzuna_cache[loc])
         jobs, i = [], 0
