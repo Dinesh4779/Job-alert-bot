@@ -1,0 +1,21 @@
+name: JobSpy Fresher Jobs
+
+on:
+  schedule:
+    - cron: "30 2 * * *"   # every day at 8:00 AM IST
+  workflow_dispatch:
+
+jobs:
+  fetch-jobspy-jobs:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: pip install -U python-jobspy requests
+      - run: python jobspy_fetch.py
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
