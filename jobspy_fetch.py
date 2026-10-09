@@ -12,12 +12,16 @@ from jobspy import scrape_jobs
 
 SUPABASE_URL = os.environ["SUPABASE_URL"]
 SUPABASE_KEY = os.environ["SUPABASE_KEY"]
+BOT_TOKEN = os.environ.get("BOT_TOKEN")
+OWNER_CHAT_ID = os.environ.get("OWNER_CHAT_ID")
 
 # ---------------- settings you can change ----------------
 ROLES = ["data analyst", "business analyst", "software developer",
          "software engineer", "qa engineer", "frontend developer",
          "backend developer", "full stack developer"]
-LOCATIONS = {"bangalore": "Bengaluru"}   # bot location key -> city to search
+# bot location key -> city name to search (keys must match your bot's city names)
+LOCATIONS = {"bangalore": "Bengaluru", "hyderabad": "Hyderabad",
+             "pune": "Pune"}
 SITES = ["linkedin", "indeed", "naukri"]
 RESULTS_PER_SEARCH = 30
 MAX_AGE_HOURS = 336      # 14 days
@@ -35,7 +39,11 @@ EXP_IN_TEXT = re.compile(
     r"(\d{1,2})\s*(?:\+|-|to)?\s*(?:\d{1,2})?\s*\+?\s*(?:years?|yrs?)"
     r"[^.\n]{0,40}exp(?:erience)?", re.I)
 FIRST_NUMBER = re.compile(r"(\d{1,2})")
-TITLE_YEARS = re.compile(r"(\d{1,2})\s*(?:\+|-|to)\s*\d{0,2}\s*(?:years?|yrs?)", re.I)
+TITLE_YEARS = re.compile(
+    r"(\d{1,2})\s*(?:\+|-|to)\s*\d{0,2}\s*(?:years?|yrs?)", re.I)
+# LinkedIn's own seniority label -> years we treat it as
+LEVEL_TO_YEARS = {"internship": 0, "entry level": 0, "mid-senior level": 5,
+                  "director": 8, "executive": 10}
 
 
 def clean(value):
@@ -50,6 +58,9 @@ def experience_min(row, title):
     match = FIRST_NUMBER.search(naukri)
     if match:
         return int(match.group(1))
+    level = clean(row.get("job_level")).lower()
+    if level in LEVEL_TO_YEARS:
+        return LEVEL_TO_YEARS[level]
     match = TITLE_YEARS.search(title)
     if match:
         return int(match.group(1))
@@ -73,6 +84,18 @@ def supabase_headers(extra=None):
     if extra:
         headers.update(extra)
     return headers
+
+
+def notify(text):
+    """Send a Telegram message to the owner (never includes secrets)."""
+    if not BOT_TOKEN or not OWNER_CHAT_ID:
+        return
+    try:
+        requests.post(f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage",
+                      json={"chat_id": OWNER_CHAT_ID, "text": text},
+                      timeout=15)
+    except requests.RequestException:
+        pass
 
 
 def save(rows):
@@ -112,6 +135,7 @@ def main():
                         site_name=[site], search_term=role, location=city,
                         results_wanted=RESULTS_PER_SEARCH,
                         hours_old=MAX_AGE_HOURS, country_indeed="India",
+                        linkedin_fetch_description=(site == "linkedin"),
                         verbose=0)
                 except Exception as e:
                     stats["failed"] += 1
@@ -134,17 +158,18 @@ def main():
                         stats["too_much_exp"] += 1
                         continue
                     company = clean(row.get("company"))
-                    pair = (title.lower(), company.lower())
+                    pair = (title.lower(), company.lower(), key)
                     if pair in seen_pairs:
                         stats["dup"] += 1
                         continue
                     seen_pairs.add(pair)
-                    job_id = "js_" + hashlib.md5(url.encode()).hexdigest()[:16]
+                    job_id = "js_" + hashlib.md5(f"{url}|{key}".encode()).hexdigest()[:16]
                     rows[job_id] = {
                         "id": job_id, "title": title, "company": company,
                         "url": url, "exp_min": exp_min,
                         "posted": posted_iso(row.get("date_posted")),
                         "search_location": key, "source": site,
+                        "role": role,
                     }
                     per_site[site] += 1
                     stats["kept"] += 1
@@ -155,9 +180,15 @@ def main():
         cleanup()
     print("summary:", stats)
     print("kept per site:", per_site)
-    if not rows:
-        print("WARNING: nothing was saved. Check the FAILED lines above.")
+    if not rows or stats["failed"] * 2 >= stats["searches"]:
+        print("WARNING: many searches failed or nothing was saved.")
+        notify(f"JobSpy run problem: {stats['failed']} of {stats['searches']} "
+               f"searches failed, {stats['kept']} jobs saved.")
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except Exception as e:
+        notify(f"JobSpy run crashed: {type(e).__name__}")
+        raise
