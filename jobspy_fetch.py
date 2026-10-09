@@ -33,8 +33,9 @@ FRESHER = re.compile(
     r"junior|jr)\b", re.I)
 EXP_IN_TEXT = re.compile(
     r"(\d{1,2})\s*(?:\+|-|to)?\s*(?:\d{1,2})?\s*\+?\s*(?:years?|yrs?)"
-    r"[^.\n]{0,40}experience", re.I)
+    r"[^.\n]{0,40}exp(?:erience)?", re.I)
 FIRST_NUMBER = re.compile(r"(\d{1,2})")
+TITLE_YEARS = re.compile(r"(\d{1,2})\s*(?:\+|-|to)\s*\d{0,2}\s*(?:years?|yrs?)", re.I)
 
 
 def clean(value):
@@ -47,6 +48,9 @@ def experience_min(row, title):
     """Return the minimum years asked, or None when unknown."""
     naukri = clean(row.get("experience_range"))
     match = FIRST_NUMBER.search(naukri)
+    if match:
+        return int(match.group(1))
+    match = TITLE_YEARS.search(title)
     if match:
         return int(match.group(1))
     if FRESHER.search(title):
