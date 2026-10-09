@@ -121,11 +121,11 @@ EXP_YEARS = re.compile(
 
 
 def _bucket_for(lo):
-    if lo <= 2:
+    if lo < 2:
         return BUCKET_ORDER[0]
-    if lo <= 4:
+    if lo < 4:
         return BUCKET_ORDER[1]
-    if lo <= 6:
+    if lo < 6:
         return BUCKET_ORDER[2]
     return BUCKET_ORDER[3]
 
