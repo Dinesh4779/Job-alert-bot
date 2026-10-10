@@ -440,6 +440,74 @@ HELP = ("<b>Commands</b>\n\n"
         "▶️ /start — resume alerts")
 
 
+def _sb_headers(extra=None):
+    key = os.environ.get("SUPABASE_KEY", "")
+    headers = {"apikey": key, "Authorization": f"Bearer {key}"}
+    if extra:
+        headers.update(extra)
+    return headers
+
+
+def is_owner(chat_id):
+    owner = os.environ.get("OWNER_CHAT_ID")
+    return bool(owner) and str(chat_id) == str(owner)
+
+
+def build_stats():
+    base = os.environ.get("SUPABASE_URL", "")
+    lines = ["Bot stats"]
+
+    try:
+        r = requests.get(
+            f"{base}/rest/v1/users",
+            headers=_sb_headers({"Prefer": "count=exact", "Range": "0-0"}),
+            params={"select": "*"}, timeout=15)
+        r.raise_for_status()
+        total = r.headers.get("Content-Range", "").split("/")[-1]
+        lines.append(f"Users: {total}")
+    except (requests.RequestException, ValueError):
+        lines.append("Users: could not read")
+
+    try:
+        r = requests.get(
+            f"{base}/rest/v1/users", headers=_sb_headers(),
+            params={"select": "location", "limit": "5000"}, timeout=15)
+        r.raise_for_status()
+        cities = {}
+        for row in r.json():
+            for city in (row.get("location") or "bangalore").split(","):
+                city = city.strip().lower()
+                if city:
+                    cities[city] = cities.get(city, 0) + 1
+        top = sorted(cities.items(), key=lambda x: -x[1])[:6]
+        lines.append("User cities: " + ", ".join(f"{c} {n}" for c, n in top))
+    except (requests.RequestException, ValueError):
+        lines.append("User cities: could not read")
+
+    try:
+        r = requests.get(
+            f"{base}/rest/v1/scraped_jobs", headers=_sb_headers(),
+            params={"select": "search_location,fetched_at", "limit": "5000"},
+            timeout=15)
+        r.raise_for_status()
+        per_city, newest = {}, ""
+        for row in r.json():
+            city = row.get("search_location") or "?"
+            per_city[city] = per_city.get(city, 0) + 1
+            newest = max(newest, row.get("fetched_at") or "")
+        lines.append("Saved scraped jobs: " + ", ".join(
+            f"{c} {n}" for c, n in sorted(per_city.items())))
+        if newest:
+            lines.append("Newest scraped job saved: "
+                         + newest[:16].replace("T", " ") + " UTC")
+        else:
+            lines.append("Newest scraped job saved: none yet")
+    except (requests.RequestException, ValueError):
+        lines.append("Scraped jobs: could not read")
+
+    return "\n".join(lines)
+
+
 def handle(chat_id, text):
     cmd, _, arg = text.strip().partition(" ")
     cmd = cmd.split("@")[0].lower()
@@ -453,6 +521,9 @@ def handle(chat_id, text):
     elif cmd == "/stop":
         db_upsert(chat_id, active=False)
         send(chat_id, "Alerts paused. Send /start to resume.")
+    elif cmd == "/stats":
+        if is_owner(chat_id):
+            send(chat_id, html.escape(build_stats()))
     elif cmd in ("/roles", "/keywords"):
         if not arg:
             user = db_get(chat_id)
