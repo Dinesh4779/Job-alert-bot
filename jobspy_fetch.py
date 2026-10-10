@@ -1,6 +1,7 @@
 """Fetch fresher-friendly jobs with JobSpy (LinkedIn, Indeed, Naukri) and save
 them to the Supabase table `scraped_jobs`."""
 import hashlib
+import logging
 import os
 import re
 import time
@@ -27,7 +28,27 @@ RESULTS_PER_SEARCH = 30
 MAX_AGE_HOURS = 336      # 14 days
 MAX_EXP_YEARS = 1        # drop jobs that clearly ask for more than this
 PAUSE_SECONDS = 6        # wait between searches (helps avoid blocks)
+RESULTS_BY_SITE = {"linkedin": 20}   # LinkedIn rate-limits, so ask for fewer
+PAUSE_BY_SITE = {"linkedin": 15}     # longer wait after each LinkedIn search
 # ---------------------------------------------------------
+
+class SiteErrorCounter(logging.Handler):
+    """Counts the ERROR lines JobSpy logs (for example LinkedIn 429) per site."""
+
+    def __init__(self):
+        super().__init__(level=logging.ERROR)
+        self.counts = {}
+
+    def emit(self, record):
+        site = record.name.split(":")[-1].lower()
+        self.counts[site] = self.counts.get(site, 0) + 1
+
+
+ERRORS = SiteErrorCounter()
+for _name in list(logging.root.manager.loggerDict):
+    if _name.startswith("JobSpy"):
+        logging.getLogger(_name).addHandler(ERRORS)
+
 
 SENIOR = re.compile(
     r"\b(senior|sr|lead|principal|staff|manager|head|director|architect)\b",
@@ -133,7 +154,7 @@ def main():
                 try:
                     df = scrape_jobs(
                         site_name=[site], search_term=role, location=city,
-                        results_wanted=RESULTS_PER_SEARCH,
+                        results_wanted=RESULTS_BY_SITE.get(site, RESULTS_PER_SEARCH),
                         hours_old=MAX_AGE_HOURS, country_indeed="India",
                         fetch_description=(site == "linkedin"),
                         verbose=0)
@@ -141,7 +162,7 @@ def main():
                     stats["failed"] += 1
                     print(f"FAILED {site} / {role}: {type(e).__name__}: "
                           f"{str(e)[:150]}")
-                    time.sleep(PAUSE_SECONDS)
+                    time.sleep(PAUSE_BY_SITE.get(site, PAUSE_SECONDS))
                     continue
 
                 for _, row in df.iterrows():
@@ -173,17 +194,21 @@ def main():
                     }
                     per_site[site] += 1
                     stats["kept"] += 1
-                time.sleep(PAUSE_SECONDS)
+                time.sleep(PAUSE_BY_SITE.get(site, PAUSE_SECONDS))
 
     if rows:
         save(list(rows.values()))
         cleanup()
+    site_errors = sum(ERRORS.counts.values())
     print("summary:", stats)
     print("kept per site:", per_site)
-    if not rows or stats["failed"] * 2 >= stats["searches"]:
-        print("WARNING: many searches failed or nothing was saved.")
-        notify(f"JobSpy run problem: {stats['failed']} of {stats['searches']} "
-               f"searches failed, {stats['kept']} jobs saved.")
+    print("errors per site:", ERRORS.counts)
+    if (not rows or stats["failed"] * 2 >= stats["searches"]
+            or site_errors * 4 >= stats["searches"]):
+        print("WARNING: many searches failed or were rate-limited.")
+        notify(f"JobSpy run problem: {stats['failed']} failed, "
+               f"{site_errors} site errors {ERRORS.counts} in "
+               f"{stats['searches']} searches, {stats['kept']} jobs saved.")
 
 
 if __name__ == "__main__":
