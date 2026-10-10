@@ -1,0 +1,40 @@
+name: Set Telegram Commands
+
+on:
+  workflow_dispatch:
+
+jobs:
+  set-commands:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Set the owner-only command menu
+        env:
+          BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
+          OWNER_CHAT_ID: ${{ secrets.OWNER_CHAT_ID }}
+        run: |
+          python3 - <<'PY'
+          import json
+          import os
+          import urllib.request
+
+          token = os.environ["BOT_TOKEN"]
+          owner = int(os.environ["OWNER_CHAT_ID"])
+          commands = [
+              {"command": "jobs", "description": "get matching jobs now"},
+              {"command": "roles", "description": "view or set your job roles"},
+              {"command": "location", "description": "view or set your job location"},
+              {"command": "suggest", "description": "send feedback to the bot's creator"},
+              {"command": "stop", "description": "pause alerts"},
+              {"command": "start", "description": "resume alerts"},
+              {"command": "help", "description": "show all commands"},
+              {"command": "stats", "description": "bot stats (owner only)"},
+          ]
+          body = json.dumps({
+              "commands": commands,
+              "scope": {"type": "chat", "chat_id": owner},
+          }).encode()
+          req = urllib.request.Request(
+              f"https://api.telegram.org/bot{token}/setMyCommands",
+              data=body, headers={"Content-Type": "application/json"})
+          print(urllib.request.urlopen(req, timeout=20).read().decode())
+          PY
