@@ -440,6 +440,9 @@ def fetch_scraped_jobs(location_key):
     return jobs
 
 
+SCRAPED_CITY_ALIAS = {"pune": "mumbai", "noida": "delhi", "gurgaon": "delhi"}
+
+
 def get_scraped_cached(location):
     now = time.time()
     key = (location or "").strip().lower()
