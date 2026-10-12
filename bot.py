@@ -439,7 +439,7 @@ HELP = ("<b>Commands</b>\n\n"
         "   e.g. /location bangalore, mumbai\n"
         "   /location clear — reset to default\n\n"
         "💬 /suggest your idea — send feedback to the creator\n\n"
-        "☕ /support — support the bot (optional)\n"
+        "☕ /support — support the bot (optional)\n\n"
         "⏸ /stop — pause alerts\n"
         "▶️ /start — resume alerts")
 
