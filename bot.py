@@ -516,7 +516,7 @@ SUPPORT_TEXT = (
     "☕ <b>Support the bot</b>\n\n"
     "This bot is free and I build it in my spare time. If it helped you, "
     "you can chip in. It's completely optional.\n\n"
-    "UPI: <code>yourname@bank</code>\n\n"
+    "UPI: <code>dineshkodavati@ptyes</code>\n\n"
     "Thank you! You can also send ideas with /suggest."
 )
 
