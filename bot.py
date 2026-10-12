@@ -439,6 +439,7 @@ HELP = ("<b>Commands</b>\n\n"
         "   e.g. /location bangalore, mumbai\n"
         "   /location clear — reset to default\n\n"
         "💬 /suggest your idea — send feedback to the creator\n\n"
+        "☕ /support — support the bot (optional)\n"
         "⏸ /stop — pause alerts\n"
         "▶️ /start — resume alerts")
 
@@ -511,6 +512,15 @@ def build_stats():
     return "\n".join(lines)
 
 
+SUPPORT_TEXT = (
+    "☕ <b>Support the bot</b>\n\n"
+    "This bot is free and I build it in my spare time. If it helped you, "
+    "you can chip in. It's completely optional.\n\n"
+    "UPI: <code>yourname@bank</code>\n\n"
+    "Thank you! You can also send ideas with /suggest."
+)
+
+
 def handle(chat_id, text):
     cmd, _, arg = text.strip().partition(" ")
     cmd = cmd.split("@")[0].lower()
@@ -524,6 +534,8 @@ def handle(chat_id, text):
     elif cmd == "/stop":
         db_upsert(chat_id, active=False)
         send(chat_id, "Alerts paused. Send /start to resume.")
+    elif cmd == "/support":
+        send(chat_id, SUPPORT_TEXT)
     elif cmd == "/stats":
         if is_owner(chat_id):
             send(chat_id, html.escape(build_stats()))
