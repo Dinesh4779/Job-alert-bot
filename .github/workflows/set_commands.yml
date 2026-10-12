@@ -24,6 +24,7 @@ jobs:
               {"command": "roles", "description": "view or set your job roles"},
               {"command": "location", "description": "view or set your job location"},
               {"command": "suggest", "description": "send feedback to the bot's creator"},
+              {"command": "support", "description": "support the bot (optional)"},
               {"command": "stop", "description": "pause alerts"},
               {"command": "start", "description": "resume alerts"},
               {"command": "help", "description": "show all commands"},
